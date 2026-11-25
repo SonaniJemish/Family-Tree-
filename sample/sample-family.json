@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "title": "અમારું પરિવાર વૃક્ષ",
+  "people": [
+    {
+      "id": "p1",
+      "name": "જીવરાજભાઈ",
+      "parent": null
+    },
+    {
+      "id": "p2",
+      "name": "અક્ષય",
+      "parent": "p1"
+    },
+    {
+      "id": "p3",
+      "name": "મનન",
+      "parent": "p1"
+    },
+    {
+      "id": "p4",
+      "name": "યશ",
+      "parent": "p1"
+    },
+    {
+      "id": "p5",
+      "name": "ભાવેશ",
+      "parent": "p2"
+    },
+    {
+      "id": "p6",
+      "name": "પ્રવીણ",
+      "parent": "p2"
+    },
+    {
+      "id": "p7",
+      "name": "કીર્તિ",
+      "parent": "p3"
+    },
+    {
+      "id": "p8",
+      "name": "ભવિન",
+      "parent": "p4"
+    },
+    {
+      "id": "p9",
+      "name": "આરવ",
+      "parent": "p4"
+    },
+    {
+      "id": "p10",
+      "name": "અંકિત",
+      "parent": "p5"
+    },
+    {
+      "id": "p11",
+      "name": "હર્ષ",
+      "parent": "p5"
+    },
+    {
+      "id": "p12",
+      "name": "દીપ",
+      "parent": "p7"
+    },
+    {
+      "id": "p13",
+      "name": "નીલ",
+      "parent": "p7"
+    },
+    {
+      "id": "p14",
+      "name": "રાજ",
+      "parent": "p7"
+    },
+    {
+      "id": "p15",
+      "name": "અન્ય વડીલો",
+      "parent": null
+    },
+    {
+      "id": "p16",
+      "name": "ચિરાગ",
+      "parent": "p15"
+    },
+    {
+      "id": "p17",
+      "name": "જીજ્ઞેશ",
+      "parent": "p15"
+    }
+  ]
+}

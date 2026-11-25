@@ -22,7 +22,7 @@
   var store = new FT.Store();
   store.load();
 
-  var pz = new FT.PanZoom(stage, world, { ignore: '.node, .actionbar, .empty-card, .zoombar' });
+  var pz = new FT.PanZoom(stage, world, { ignore: '.node, .actionbar, .empty-card, .zoombar, .historybar' });
   var canvas = new FT.CanvasView(canvasLayer);
 
   var view = 'canvas';
@@ -41,8 +41,8 @@
   function render(animate) {
     var people = store.data.people;
     emptyEl.classList.toggle('hidden', people.length > 0);
-    titleEl.textContent = store.data.title;
-    document.title = store.data.title + ' - Family Tree';
+    if (titleEl) titleEl.textContent = store.data.title;
+    document.title = 'Vanshaa Vali';
     if (view === 'canvas') canvas.render(people, selectedId, animate);
     else renderTree();
     updateToolbar();
@@ -131,7 +131,7 @@
     if (n) openEdit(n.getAttribute('data-id'));
   });
   stage.addEventListener('click', function (e) {
-    if (e.target.closest('.node, .actionbar, .zoombar, .empty-card')) return;
+    if (e.target.closest('.node, .actionbar, .zoombar, .historybar, .empty-card')) return;
     if (pz.justDragged) return;
     if (view === 'canvas') select(null);
   });
@@ -168,7 +168,7 @@
   $('#btnFirst').addEventListener('click', function () { openModal('root', null, ''); });
   $('#btnUndo').addEventListener('click', function () { store.undo(); });
   $('#btnRedo').addEventListener('click', function () { store.redo(); });
-  titleEl.addEventListener('dblclick', function () { openModal('title', null, store.data.title); });
+  if (titleEl) titleEl.addEventListener('dblclick', function () { openModal('title', null, store.data.title); });
 
   $('#btnSample').addEventListener('click', function () {
     var res = io.normalize(FT.sample.people, FT.sample.title);

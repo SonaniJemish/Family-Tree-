@@ -25,5 +25,5 @@
     return { id: 'p' + (i + 1), name: r[0], parent: r[1] < 0 ? null : 'p' + (r[1] + 1) };
   });
   root.FT = root.FT || {};
-  root.FT.sample = { title: 'અમારું પરિવાર વૃક્ષ', people: people };
+  root.FT.sample = { title: 'Vanshaa Vali', people: people };
 })(typeof self !== 'undefined' ? self : globalThis);

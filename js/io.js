@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : globalThis, function () {
   'use strict';
 
-  var DEFAULT_TITLE = 'અમારું પરિવાર વૃક્ષ';
+  var DEFAULT_TITLE = 'Vanshaa Vali';
 
   function emptyData() {
     return { version: 1, title: DEFAULT_TITLE, nextId: 1, people: [] };

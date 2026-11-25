@@ -3,33 +3,43 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Family Tree</title>
+  <title>Vanshaa Vali</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="topbar">
-    <h1 id="title" title="Double click karke title badlo"></h1>
-
-    <div class="seg" role="tablist" aria-label="View">
-      <button id="tabCanvas" class="seg-btn active" role="tab">Canvas</button>
-      <button id="tabTree" class="seg-btn" role="tab">Tree (ped)</button>
+    <div class="brand-group">
+      <a class="brand" href="#" aria-label="Vanshaa Vali">
+        <span class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.5"></circle>
+            <circle cx="6" cy="18" r="2.5"></circle>
+            <circle cx="18" cy="18" r="2.5"></circle>
+            <path d="M12 7.5V12M12 12H6v3.5M12 12h6v3.5"></path>
+          </svg>
+        </span>
+        <span class="brand-name">Vanshaa Vali</span>
+      </a>
     </div>
 
+    <nav class="seg" role="tablist" aria-label="View">
+      <button id="tabCanvas" class="seg-btn active" role="tab">Canvas</button>
+      <button id="tabTree" class="seg-btn" role="tab">Tree</button>
+    </nav>
+
     <div class="actions">
-      <button id="btnUndo" class="btn" title="Undo (Ctrl+Z)">Undo</button>
-      <button id="btnRedo" class="btn" title="Redo (Ctrl+Y)">Redo</button>
-      <button id="btnRoot" class="btn" title="Naya alag shuruaat wala vyakti">+ Naya root</button>
+      <button id="btnRoot" class="btn" title="Add a new root person">+ New Tree</button>
       <button id="btnImport" class="btn">Import</button>
       <div class="menu-wrap">
         <button id="btnExport" class="btn primary">Export &#9662;</button>
         <div id="exportMenu" class="menu hidden">
-          <button data-exp="json">JSON (backup, import ke liye)</button>
-          <button data-exp="csv">CSV (Excel)</button>
-          <button data-exp="png">Tree image (PNG)</button>
-          <button data-exp="print">Print / PDF</button>
+          <button data-exp="json">JSON (Backup)</button>
+          <button data-exp="csv">CSV (Backup)</button>
+          <button data-exp="png">PNG</button>
+          <button data-exp="print">PDF</button>
         </div>
       </div>
-      <span id="dirty" class="dirty hidden" title="Last export ke baad changes hue hain">&#9679; File export baki</span>
+      <span id="dirty" class="dirty hidden" title="Changes made since last export">&#9679; Unsaved</span>
     </div>
     <input id="fileInput" type="file" accept=".json,.csv,text/csv,application/json" class="hidden">
   </header>
@@ -60,13 +70,40 @@
       </div>
     </div>
 
-    <div class="zoombar">
-      <button id="zOut" title="Zoom out">&minus;</button>
-      <button id="zIn" title="Zoom in">+</button>
-      <button id="zFit" title="Poora tree screen me laao">Fit</button>
+    <div class="historybar" role="group" aria-label="History">
+      <button id="btnUndo" class="icon-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 14L4 9l5-5"></path>
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path>
+        </svg>
+      </button>
+      <button id="btnRedo" class="icon-btn" title="Redo (Ctrl+Y)" aria-label="Redo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 14l5-5-5-5"></path>
+          <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path>
+        </svg>
+      </button>
     </div>
 
-    <div id="shortcuts" class="shortcuts">Tab = child &middot; Enter = sibling &middot; F2 = edit &middot; Delete &middot; Arrow keys = ghoomo</div>
+    <div class="zoombar" role="group" aria-label="Zoom controls">
+      <button id="zOut" class="zoom-icon-btn" title="Zoom Out" aria-label="Zoom Out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <path d="M5 12h14"></path>
+        </svg>
+      </button>
+      <button id="zIn" class="zoom-icon-btn" title="Zoom In" aria-label="Zoom In">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </button>
+      <span class="zoom-sep" aria-hidden="true"></span>
+      <button id="zFit" class="zoom-fit-btn" title="Fit to Screen" aria-label="Fit View">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+        </svg>
+        <span>Fit View</span>
+      </button>
+    </div>
   </main>
 
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true">

@@ -162,7 +162,7 @@
         var p3 = { x: q.x, y: q.y };
         var dPath = 'M' + r1(p0.x) + ' ' + r1(p0.y) + 'C' + r1(c1.x) + ' ' + r1(c1.y) + ' ' + r1(c2.x) + ' ' + r1(c2.y) + ' ' + r1(p3.x) + ' ' + r1(p3.y);
 
-        var w = Math.min(trunkW * 0.62, 5 + 12 * Math.sqrt(q.desc));
+        var w = Math.min(trunkW * 0.62, 8 + 11 * Math.sqrt(q.desc));
         darks.push('<path d="' + dPath + '" stroke-width="' + r1(w + 5) + '"/>');
         mids.push('<path d="' + dPath + '" stroke-width="' + r1(w) + '"/>');
         lights.push('<path d="' + dPath + '" stroke-width="' + r1(Math.max(1.2, w * 0.26)) + '"/>');
@@ -211,20 +211,13 @@
       });
       trunk.push('<path d="' + roots + '" fill="none" stroke="#4a2f16" stroke-width="9" stroke-linecap="round"/>');
 
-      /* ---- dark foliage behind the branches (makes the crown thick and round) ---- */
+      /* ---- foliage and leaves behind the trunk & branches so parent-child connections stay clearly visible ---- */
       var back = '<g fill="#33702f">';
       anchors.forEach(function (a) { if (!a.small) back += '<circle cx="' + r1(a.x) + '" cy="' + r1(a.y) + '" r="' + r1(a.r * 1.05) + '"/>'; });
       back += '</g>';
       out.push(back);
 
-      out.push(trunk.join(''));
-      out.push('<g fill="none" stroke-linecap="round" stroke="#3f2a15">' + darks.join('') + '</g>');
-      out.push('<g fill="none" stroke-linecap="round" stroke="#7a4f27">' + mids.join('') + '</g>');
-      out.push('<g fill="none" stroke-linecap="butt" stroke="#2a1809" stroke-opacity="0.26" stroke-dasharray="3 12">' + bark.join('') + '</g>');
-      out.push('<g fill="none" stroke-linecap="round" stroke="#b08550" stroke-opacity="0.55">' + lights.join('') + '</g>');
-
-      /* ---- lighter, see-through foliage in front ---- */
-      var front = '<g opacity="0.5">';
+      var front = '<g opacity="0.55">';
       anchors.forEach(function (a, i) {
         if (a.small) return;
         var ra = rng(hash('f' + i));
@@ -234,7 +227,6 @@
       front += '</g>';
       out.push(front);
 
-      /* ---- leaves ---- */
       var leaves = [];
       anchors.forEach(function (a, i) {
         var rl = rng(hash('l' + i));
@@ -249,6 +241,12 @@
         }
       });
       out.push('<g stroke="#2f5a25" stroke-width="0.7" stroke-opacity="0.7">' + leaves.join('') + '</g>');
+
+      out.push(trunk.join(''));
+      out.push('<g fill="none" stroke-linecap="round" stroke="#3b2410">' + darks.join('') + '</g>');
+      out.push('<g fill="none" stroke-linecap="round" stroke="#85562b">' + mids.join('') + '</g>');
+      out.push('<g fill="none" stroke-linecap="butt" stroke="#2a1809" stroke-opacity="0.26" stroke-dasharray="3 12">' + bark.join('') + '</g>');
+      out.push('<g fill="none" stroke-linecap="round" stroke="#c0925a" stroke-opacity="0.65">' + lights.join('') + '</g>');
     }
 
     /* ---------- ground details drawn in front of the foot of the trunk ---------- */

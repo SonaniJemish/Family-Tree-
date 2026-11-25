@@ -1,77 +1,98 @@
 # Family Tree (પરિવાર વૃક્ષ)
 
-Gujarati family tree app. Naam Gujlish me type karo, Gujarati suggestion milega. Layout poora automatic hai, kuch bhi manually nahi rakhna.
-Koi install ya database nahi chahiye. Data aapki JSON / CSV file me rehta hai.
+A simple web app to make your family tree.
 
-## Chalane ka tarika
+- You type a name in English letters (Gujlish), for example `jemish`. The app suggests the Gujarati name.
+- The tree arranges itself. You never have to move boxes by hand.
+- You can see the family as a flowchart (Canvas) or as a real tree (Tree view).
+- Your data is saved in a file (JSON or CSV). No database is needed.
 
-Option 1 (sabse easy): `index.html` par double click karo.
+## How to run
 
-Option 2 (Google suggestion ke liye ye zyada safe): folder me terminal kholo aur
+You do not need to install anything.
+
+**Easy way:** open the file `index.html` in your browser (double click).
+
+**Better way** (the Gujarati suggestions work more safely this way):
+
+1. Open a terminal in this folder.
+2. Run this command:
 
 ```
 python -m http.server 8000
 ```
 
-phir browser me `http://localhost:8000` kholo.
+3. Open `http://localhost:8000` in your browser.
 
-## Kaise use karna hai
+## How to use
 
-| Kaam | Kaise |
+| What you want | What to do |
 |---|---|
-| Pehla vyakti | "Pehla vyakti" button |
-| Bacha add | Box par click, phir **+ Child** (ya `Tab`) |
-| Bhai / behen add | Box par click, phir **+ Sibling** (ya `Enter`) |
-| Naam badlo | Box par double click (ya `F2`) |
-| Delete | **Delete** (ya `Delete` key). Neeche ke log bhi jayenge, Undo se wapas aa sakte hain |
-| Alag shuruaat (2nd root) | Upar **+ Naya root** |
-| Undo / Redo | `Ctrl+Z` / `Ctrl+Y` |
-| Ghoomna / zoom | Background drag karo, mouse wheel se zoom, **Fit** se poora tree |
+| Add the first person | Click the "Pehla vyakti" button |
+| Add a child | Click a box, then click **+ Child** (or press `Tab`) |
+| Add a brother or sister | Click a box, then click **+ Sibling** (or press `Enter`) |
+| Change a name | Double click the box (or press `F2`) |
+| Delete a person | Click a box, then click **Delete**. The people below will also be deleted. |
+| Start a second family line | Click **+ Naya root** at the top |
+| Undo or redo | `Ctrl+Z` and `Ctrl+Y` |
+| Move around | Drag the background. Use the mouse wheel to zoom. Click **Fit** to see the whole tree. |
 
-Naam likhte time: `jemish` type karo, `Enter` (suggestion chun jata hai), phir `Enter` (save). Ek saath kai naam daalne ke liye `Shift+Enter` (save karke agla naam).
+### Typing a name
 
-## Do view
+1. Type the name in English letters, for example `jemish`.
+2. Press `Enter` to pick the first Gujarati suggestion. You can also use the arrow keys.
+3. Press `Enter` again to save.
 
-- **Canvas**: flowchart jaisa, yahin sab edit hota hai.
-- **Tree (ped)**: wahi data, asli ped ke roop me (trunk neeche, branches upar). Ye sirf dekhne aur export ke liye hai.
+To add many names one after another, press `Shift+Enter` instead of the last `Enter`.
 
-## Data save / wapas lana
+## Two views
 
-- Browser me apne aap auto-save hota hai.
-- **Export > JSON** ya **CSV**: file download hoti hai. Isi ko save karke rakho.
-- **Import**: wahi file upload karo, sab wapas aa jayega, aur aage edit kar sakte ho.
-- Header me "File export baki" dikhe to matlab last export ke baad changes hue hain.
-- **Export > Tree image (PNG)** aur **Print / PDF** se ped ka design nikalta hai.
+- **Canvas:** a flowchart with boxes and lines. You do all your editing here.
+- **Tree (ped):** the same family drawn as a real tree. The oldest person is at the bottom (the trunk) and the children grow up like branches. This view is for looking and sharing.
 
-CSV ke columns: `id,name,parent_id`. Excel me kholne par Gujarati sahi dikhta hai.
+## Saving your data
 
-## Suggestion (Gujlish to Gujarati)
+- The app saves your work in the browser by itself.
+- To keep a safe copy, click **Export** and choose **JSON** or **CSV**. A file is downloaded. Keep this file.
+- To get your tree back later, click **Import** and choose the same file. Everything comes back and you can keep editing.
+- If you see "File export baki" at the top, it means you changed something after your last export.
+- **Export > Tree image (PNG)** and **Print / PDF** give you a picture of the tree view.
 
-Internet ho to Google Input Tools se suggestion aata hai. Internet na ho to basic offline suggestion aata hai (kam accurate).
+The CSV file has three columns: `id`, `name` and `parent_id`. It opens in Excel with Gujarati letters shown correctly.
 
-## Folder
+## About the Gujarati suggestions
+
+- With internet, the suggestions come from Google Input Tools.
+- Without internet, the app uses a simple built-in guess. It is less accurate.
+
+## Folders and files
 
 ```
-index.html        app ka page
-css/style.css     design
-js/layout.js      automatic layout
-js/store.js       data, undo/redo, auto-save
-js/io.js          JSON/CSV import-export aur checking
-js/translit.js    Gujlish suggestion
-js/canvas-view.js canvas view
-js/tree-view.js   ped design (SVG)
-js/app.js         sab ko jodta hai
-sample/           demo family (JSON + CSV)
-tests/            tests
+index.html          the page of the app
+css/style.css       colors and design
+js/layout.js        puts the boxes in the right place automatically
+js/store.js         keeps the data, undo/redo, auto-save
+js/io.js            JSON and CSV import/export and checking
+js/translit.js      English letters to Gujarati suggestions
+js/canvas-view.js   the Canvas view
+js/tree-view.js     the Tree (ped) drawing
+js/app.js           connects everything
+sample/             a small example family (JSON and CSV)
+tests/              tests
 ```
 
 ## Tests (optional)
 
 ```
 node --test tests/unit.test.js
-NODE_PATH=<playwright wali jagah> node tests/e2e.js
 ```
 
-## Ped ka design badalna
+The browser test needs Playwright:
 
-Abhi ped code se banta hai (`js/tree-view.js`). Aapki illustration ya Figma design aane par is file ko badal denge, baaki app waisa hi rahega.
+```
+NODE_PATH=<folder where playwright is installed> node tests/e2e.js
+```
+
+## Changing the tree design later
+
+The tree is drawn by code in `js/tree-view.js`. Later, your own illustration or Figma design can replace this file. The rest of the app stays the same.

@@ -30,12 +30,15 @@
       var id = r.id === undefined || r.id === null ? '' : String(r.id).trim();
       var name = r.name === undefined || r.name === null ? '' : String(r.name).trim();
       var parent = r.parent === undefined || r.parent === null || String(r.parent).trim() === '' ? null : String(r.parent).trim();
+      var wife = r.wife === undefined || r.wife === null ? '' : String(r.wife).trim();
       var rowNo = i + 1;
       if (!id) return fail('Row ' + rowNo + ': id khali hai.');
       if (!name) return fail('Row ' + rowNo + ': naam khali hai.');
       if (ids[id]) return fail('Row ' + rowNo + ': id "' + id + '" do baar aaya hai.');
       ids[id] = true;
-      people.push({ id: id, name: name, parent: parent });
+      var person = { id: id, name: name, parent: parent };
+      if (wife) person.wife = wife;
+      people.push(person);
     }
     for (var j = 0; j < people.length; j++) {
       var p = people[j];
@@ -95,11 +98,14 @@
     return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
-  /** CSV with BOM so Excel shows Gujarati correctly. Columns: id,name,parent_id */
+  /** CSV with BOM so Excel shows Gujarati correctly. Columns: id,name,parent_id[,wife] */
   function toCSV(data) {
-    var lines = ['id,name,parent_id'];
+    var hasWife = data.people.some(function (p) { return !!p.wife; });
+    var lines = [hasWife ? 'id,name,parent_id,wife' : 'id,name,parent_id'];
     data.people.forEach(function (p) {
-      lines.push([csvEscape(p.id), csvEscape(p.name), csvEscape(p.parent || '')].join(','));
+      var cols = [csvEscape(p.id), csvEscape(p.name), csvEscape(p.parent || '')];
+      if (hasWife) cols.push(csvEscape(p.wife || ''));
+      lines.push(cols.join(','));
     });
     return '﻿' + lines.join('\r\n') + '\r\n';
   }
@@ -138,11 +144,12 @@
     var iName = header.indexOf('name');
     var iParent = header.indexOf('parent_id');
     if (iParent === -1) iParent = header.indexOf('parent');
+    var iWife = header.indexOf('wife');
     if (iId === -1 || iName === -1 || iParent === -1) {
       return fail('CSV ki pehli line me id, name, parent_id columns hone chahiye.');
     }
     var raw = rows.slice(1).map(function (r) {
-      return { id: r[iId], name: r[iName], parent: r[iParent] };
+      return { id: r[iId], name: r[iName], parent: r[iParent], wife: iWife !== -1 ? r[iWife] : '' };
     });
     return normalize(raw, null);
   }

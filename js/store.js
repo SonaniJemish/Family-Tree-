@@ -153,6 +153,18 @@
     return true;
   };
 
+  Store.prototype.setWife = function (id, wifeName) {
+    var me = this.get(id);
+    if (!me) return false;
+    this._pushUndo();
+    var w = String(wifeName || '').trim();
+    if (w) me.wife = w;
+    else delete me.wife;
+    this._mark();
+    this._emit({ type: 'wife', id: id });
+    return true;
+  };
+
   Store.prototype.setTitle = function (title) {
     this._pushUndo();
     this.data.title = String(title).trim() || io.DEFAULT_TITLE;

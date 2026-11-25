@@ -46,12 +46,22 @@
         el = document.createElement('div');
         el.className = 'node';
         el.setAttribute('data-id', p.id);
-        el.innerHTML = '<span class="nm"></span>';
+        el.innerHTML = '<span class="nm"></span><span class="wife hidden"></span>';
         self.nodesEl.appendChild(el);
         self.els[p.id] = el;
       }
       var pos = L.pos[p.id];
       el.firstChild.textContent = p.name;
+      var wifeEl = el.lastChild;
+      if (p.wife) {
+        wifeEl.textContent = '& ' + p.wife;
+        wifeEl.classList.remove('hidden');
+        el.classList.add('has-wife');
+      } else {
+        wifeEl.textContent = '';
+        wifeEl.classList.add('hidden');
+        el.classList.remove('has-wife');
+      }
       el.style.width = pos.w + 'px';
       el.style.height = pos.h + 'px';
       el.style.setProperty('--c', COLORS[pos.depth % COLORS.length]);

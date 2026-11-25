@@ -65,7 +65,7 @@
     var n = people.length;
     var has = n > 0;
     var TAGH = 46;
-    var measure = FT.layout.makeMeasure('700 26px ' + FT.layout.FONT, 42, 96, 360);
+    var measure = FT.layout.makeMeasure('700 26px ' + FT.layout.FONT, 42, 96, 480);
     var F = FT.layout.computeFan(people, { measure: measure, nodeH: TAGH });
 
     var bb = has ? F.bbox : { minX: -260, maxX: 260, minY: 100, maxY: 420 };
@@ -278,10 +278,11 @@
     people.forEach(function (p) {
       var q = P[p.id];
       var tw = q.w, tx = q.x - tw / 2, ty = q.y - TAGH / 2;
+      var label = p.wife ? (p.name + ' & ' + p.wife) : p.name;
       tags.push('<g><rect x="' + r1(tx + 2) + '" y="' + r1(ty + 3) + '" width="' + tw + '" height="' + TAGH + '" rx="12" fill="#000" opacity="0.2"/>' +
         '<rect x="' + r1(tx) + '" y="' + r1(ty) + '" width="' + tw + '" height="' + TAGH + '" rx="12" fill="#f8e7c3" stroke="#4b3019" stroke-width="2"/>' +
         '<text x="' + r1(q.x) + '" y="' + r1(q.y + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="26" font-weight="700" fill="#2f1d0c">' +
-        esc(p.name) + '</text></g>');
+        esc(label) + '</text></g>');
     });
     out.push(tags.join(''));
 

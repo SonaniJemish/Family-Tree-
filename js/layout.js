@@ -22,7 +22,7 @@
     var nodes = {};
     var roots = [];
     people.forEach(function (p) {
-      nodes[p.id] = { id: p.id, name: p.name, parent: p.parent, children: [] };
+      nodes[p.id] = { id: p.id, name: p.name, parent: p.parent, wife: p.wife || '', children: [] };
     });
     people.forEach(function (p) {
       var n = nodes[p.id];
@@ -51,7 +51,7 @@
     var maxDepth = 0;
 
     function measureNode(n) {
-      n.w = o.measure(n.name);
+      n.w = n.wife ? Math.max(o.measure(n.name), o.measure(n.wife)) : o.measure(n.name);
       var cw = 0;
       var desc = 0;
       for (var i = 0; i < n.children.length; i++) {
@@ -139,7 +139,7 @@
     var tree = buildTree(people);
 
     function prep(nd) {
-      nd.w = o.measure(nd.name);
+      nd.w = nd.wife ? o.measure(nd.name + ' & ' + nd.wife) : o.measure(nd.name);
       nd.desc = 0;
       nd.wt = 0;
       nd.leaves = 0;

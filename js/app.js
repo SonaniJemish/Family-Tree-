@@ -68,6 +68,9 @@
     var d = canvas.disp[selectedId];
     var h = canvas.layout.pos[selectedId].h;
     var s = pz.s;
+    var p = store.get(selectedId);
+    var wifeBtn = actionbar.querySelector('[data-act="wife"]');
+    if (wifeBtn) wifeBtn.textContent = p && p.wife ? 'Edit Wife' : '+ Wife';
     actionbar.classList.remove('hidden');
     var barH = actionbar.offsetHeight || 44;
     var left = s.x + s.k * d.x;
@@ -142,6 +145,7 @@
     var act = b.getAttribute('data-act');
     if (act === 'child') openChild(selectedId);
     else if (act === 'sibling') openSibling(selectedId);
+    else if (act === 'wife') openWife(selectedId);
     else if (act === 'edit') openEdit(selectedId);
     else if (act === 'delete') doDelete(selectedId);
   });
@@ -150,6 +154,7 @@
 
   function openChild(id) { openModal('child', id, ''); }
   function openSibling(id) { openModal('sibling', id, ''); }
+  function openWife(id) { var p = store.get(id); if (p) openModal('wife', id, p.wife || ''); }
   function openEdit(id) { var p = store.get(id); if (p) openModal('edit', id, p.name); }
 
   function doDelete(id) {
@@ -187,6 +192,7 @@
       case 'root': return ['Naya vyakti', 'Alag shuruaat (root) ke roop me add hoga'];
       case 'child': return ['Bache ka naam', name + ' ka bacha'];
       case 'sibling': return [t && t.parent ? 'Bhai / behen ka naam' : 'Naye root ka naam', t && t.parent ? name + ' ke saath, same parent ke neeche' : 'Alag shuruaat (root) ke roop me add hoga'];
+      case 'wife': return ['Wife ka naam', name + ' ki wife (khali chhodoge to hat jayegi)'];
       case 'edit': return ['Naam badlo', 'Abhi ka naam: ' + name];
       case 'title': return ['Tree ka title', 'Ye tree design ke upar dikhega'];
       default: return ['', ''];
@@ -201,7 +207,7 @@
     input.value = initial || '';
     renderSuggestions();
     modal.classList.remove('hidden');
-    $('#mSaveMore').classList.toggle('hidden', mode === 'edit' || mode === 'title');
+    $('#mSaveMore').classList.toggle('hidden', mode === 'edit' || mode === 'title' || mode === 'wife');
     input.focus();
     input.select();
   }
@@ -266,7 +272,7 @@
 
   function save(more) {
     var name = input.value.trim();
-    if (!name) {
+    if (!name && m.mode !== 'wife') {
       input.classList.remove('shake');
       void input.offsetWidth;
       input.classList.add('shake');
@@ -277,6 +283,7 @@
     if (mode === 'root') newId = store.addRoot(name);
     else if (mode === 'child') newId = store.addChild(target, name);
     else if (mode === 'sibling') newId = store.addSibling(target, name);
+    else if (mode === 'wife') store.setWife(target, name);
     else if (mode === 'edit') store.rename(target, name);
     else if (mode === 'title') store.setTitle(name);
 
@@ -426,6 +433,14 @@
 
   function exportPrint() {
     var b = FT.TreeView.build(store.data);
+    var oldStyle = document.getElementById('printPageStyle');
+    if (oldStyle) oldStyle.remove();
+    var wMm = (b.width * 25.4 / 96).toFixed(2);
+    var hMm = (b.height * 25.4 / 96).toFixed(2);
+    var st = document.createElement('style');
+    st.id = 'printPageStyle';
+    st.textContent = '@media print { @page { size: ' + wMm + 'mm ' + hMm + 'mm; margin: 0; } }';
+    document.head.appendChild(st);
     printArea.innerHTML = b.svg;
     document.body.classList.add('printing');
     window.print();
@@ -433,6 +448,8 @@
   window.addEventListener('afterprint', function () {
     document.body.classList.remove('printing');
     printArea.innerHTML = '';
+    var st = document.getElementById('printPageStyle');
+    if (st) st.remove();
   });
 
   var exportMenu = $('#exportMenu');

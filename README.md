@@ -48,7 +48,7 @@ To add many names one after another, press `Shift+Enter` instead of the last `En
 ## Two views
 
 - **Canvas:** a flowchart with boxes and lines. You do all your editing here.
-- **Tree (ped):** the same family drawn as a real tree. The oldest person is at the bottom (the trunk) and the children grow up like branches. This view is for looking and sharing.
+- **Tree (ped):** the same family drawn as a real, round, leafy tree. The oldest people sit on the thick trunk, and the children grow out like branches into a round crown. The sun, clouds, hills, grass and flowers are added to make it look nice. This view is for looking and sharing.
 
 ## Saving your data
 

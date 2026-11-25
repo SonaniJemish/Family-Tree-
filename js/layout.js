@@ -112,6 +112,167 @@
     };
   }
 
+  /*
+   * Round "fan" layout for the tree (ped) view.
+   *
+   * A single oldest person (and anyone who has only one child) forms the trunk: they are
+   * stacked straight up from the ground. The first person with 2+ children is the fork.
+   * From the fork every generation sits on a bigger circle, children share the angle of
+   * their parent, so the whole family spreads like a round crown.
+   *
+   * Coordinates: x to the right, y UP, the ground is y = 0, the trunk is at x = 0.
+   * Returns { pos, chain, forkId, virtual, center, bbox, rings }.
+   */
+  function computeFan(people, opts) {
+    var o = {
+      measure: approxMeasure, nodeH: 40, pad: 16, gapW: 22,
+      chainStep: 112, trunkLen: 190, ringMin: 138, maxAngleDeg: 100
+    };
+    if (opts) for (var key in opts) if (Object.prototype.hasOwnProperty.call(opts, key) && opts[key] !== undefined) o[key] = opts[key];
+
+    var out = {
+      pos: {}, chain: [], forkId: null, virtual: false,
+      center: { x: 0, y: 0 }, bbox: { minX: 0, maxX: 0, minY: 0, maxY: 0 }, rings: [0]
+    };
+    if (!people.length) return out;
+
+    var tree = buildTree(people);
+
+    function prep(nd) {
+      nd.w = o.measure(nd.name);
+      nd.desc = 0;
+      nd.wt = 0;
+      nd.leaves = 0;
+      for (var i = 0; i < nd.children.length; i++) {
+        prep(nd.children[i]);
+        nd.desc += 1 + nd.children[i].desc;
+        nd.wt += nd.children[i].wt;
+        nd.leaves += nd.children[i].leaves;
+      }
+      if (!nd.children.length) { nd.wt = nd.w + o.gapW; nd.leaves = 1; }
+    }
+    tree.roots.forEach(prep);
+
+    var virtual = tree.roots.length !== 1;
+    var chain = [];
+    var forkChildren;
+    var forkNode = null;
+    if (virtual) {
+      forkChildren = tree.roots;
+    } else {
+      var cur = tree.roots[0];
+      chain.push(cur);
+      while (cur.children.length === 1) { cur = cur.children[0]; chain.push(cur); }
+      forkNode = cur;
+      forkChildren = cur.children;
+    }
+    var centerY = virtual ? o.trunkLen : chain.length * o.chainStep;
+
+    var leafCount = 0;
+    forkChildren.forEach(function (c) { leafCount += c.leaves; });
+    var maxA = Math.min(o.maxAngleDeg, 40 + 12 * leafCount) * Math.PI / 180;
+
+    var items = [];
+    var byRing = [];
+    function assign(nodes, a0, a1, ring, parentId) {
+      var total = 0;
+      nodes.forEach(function (x) { total += x.wt; });
+      var at = a0;
+      nodes.forEach(function (nd) {
+        var span = (a1 - a0) * nd.wt / total;
+        nd.angle = at + span / 2;
+        nd.ring = ring;
+        nd.parentId = parentId;
+        (byRing[ring] = byRing[ring] || []).push(nd);
+        items.push(nd);
+        var s0 = at;
+        at += span;
+        assign(nd.children, s0, at, ring + 1, nd.id);
+      });
+    }
+    assign(forkChildren, -maxA, maxA, 1, forkNode ? forkNode.id : null);
+
+    // radius of every ring: big enough that neighbours on the ring do not touch
+    var R = [0];
+    for (var k = 1; k < byRing.length; k++) {
+      var list = (byRing[k] || []).slice().sort(function (a, b) { return a.angle - b.angle; });
+      var need = 0;
+      for (var i = 1; i < list.length; i++) {
+        var a = list[i - 1], b = list[i];
+        var X = (a.w + b.w) / 2 + o.pad, Y = o.nodeH + o.pad;
+        var ds = Math.abs(Math.sin(b.angle) - Math.sin(a.angle));
+        var dc = Math.abs(Math.cos(b.angle) - Math.cos(a.angle));
+        var rx = ds > 1e-9 ? X / ds : Infinity;
+        var ry = dc > 1e-9 ? Y / dc : Infinity;
+        var r = Math.min(rx, ry);
+        if (isFinite(r)) need = Math.max(need, r);
+      }
+      R[k] = Math.max(R[k - 1] + o.ringMin, need);
+    }
+
+    function place(scale) {
+      var arr = [];
+      chain.forEach(function (nd, i) { arr.push({ nd: nd, x: 0, y: (i + 1) * o.chainStep }); });
+      items.forEach(function (nd) {
+        var r = R[nd.ring] * scale;
+        arr.push({ nd: nd, x: r * Math.sin(nd.angle), y: centerY + r * Math.cos(nd.angle) });
+      });
+      return arr;
+    }
+
+    // safety net: if anything still touches (different rings near the sides), open the crown a bit
+    function touching(arr) {
+      if (arr.length > 2500) return false;
+      var s = arr.slice().sort(function (p, q) { return (p.x - p.nd.w / 2) - (q.x - q.nd.w / 2); });
+      for (var i = 0; i < s.length; i++) {
+        var right = s[i].x + s[i].nd.w / 2 + 6;
+        for (var j = i + 1; j < s.length; j++) {
+          if (s[j].x - s[j].nd.w / 2 >= right) break;
+          if (Math.abs(s[j].y - s[i].y) < o.nodeH + 6) return true;
+        }
+      }
+      return false;
+    }
+
+    var scale = 1;
+    var placed = place(scale);
+    for (var guard = 0; guard < 60 && touching(placed); guard++) {
+      scale *= 1.06;
+      placed = place(scale);
+    }
+
+    var minY = Infinity;
+    placed.forEach(function (p) { minY = Math.min(minY, p.y - o.nodeH / 2); });
+    var lift = Math.max(0, 80 - minY);
+
+    var bb = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    placed.forEach(function (p) {
+      var nd = p.nd;
+      var isChain = chain.indexOf(nd) !== -1;
+      var depthIdx = isChain ? chain.indexOf(nd) : (virtual ? nd.ring - 1 : chain.length - 1 + nd.ring);
+      var y = p.y + lift;
+      out.pos[nd.id] = {
+        x: p.x, y: y, w: nd.w, h: o.nodeH,
+        depth: depthIdx, ring: isChain ? 0 : nd.ring,
+        angle: isChain ? 0 : nd.angle,
+        desc: nd.desc, parent: nd.parent || null,
+        chain: isChain
+      };
+      bb.minX = Math.min(bb.minX, p.x - nd.w / 2);
+      bb.maxX = Math.max(bb.maxX, p.x + nd.w / 2);
+      bb.minY = Math.min(bb.minY, y - o.nodeH / 2);
+      bb.maxY = Math.max(bb.maxY, y + o.nodeH / 2);
+    });
+
+    out.chain = chain.map(function (c) { return c.id; });
+    out.forkId = forkNode ? forkNode.id : null;
+    out.virtual = virtual;
+    out.center = { x: 0, y: centerY + lift };
+    out.bbox = bb;
+    out.rings = R.map(function (r) { return r * scale; });
+    return out;
+  }
+
   var FONT = '"Noto Sans Gujarati","Nirmala UI","Shruti","Lohit Gujarati","Segoe UI",system-ui,sans-serif';
 
   /** Browser only: measures the real text width with the real font. */
@@ -129,6 +290,7 @@
 
   return {
     computeLayout: computeLayout,
+    computeFan: computeFan,
     buildTree: buildTree,
     approxMeasure: approxMeasure,
     makeMeasure: makeMeasure,

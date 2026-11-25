@@ -82,6 +82,126 @@ test('layout: descendant counts', () => {
   assert.equal(L.pos.c.desc, 0);
 });
 
+/* ---------- round fan layout (tree / ped view) ---------- */
+function fanOverlaps(pos) {
+  const a = Object.values(pos);
+  for (let i = 0; i < a.length; i++) {
+    for (let j = i + 1; j < a.length; j++) {
+      if (Math.abs(a[i].x - a[j].x) < (a[i].w + a[j].w) / 2 && Math.abs(a[i].y - a[j].y) < a[i].h) return true;
+    }
+  }
+  return false;
+}
+
+// a family shaped like a real one: a trunk of 4, then 6 branches, then 3 more generations (fake names)
+function familyLike() {
+  const people = [];
+  let n = 0;
+  const add = (parent) => { const id = 'f' + n++; people.push({ id, name: 'નામ' + n, parent }); return id; };
+  let top = add(null);
+  for (let i = 0; i < 3; i++) top = add(top);
+  const grand = [3, 2, 0, 2, 2, 4]; // children of each of the 6 sons
+  grand.forEach((g) => {
+    const son = add(top);
+    for (let i = 0; i < g; i++) {
+      const kid = add(son);
+      const gk = (n + i) % 3; // 0..2 grandchildren
+      for (let j = 0; j < gk; j++) {
+        const gg = add(kid);
+        if ((n + j) % 4 === 0) add(gg);
+      }
+    }
+  });
+  return people;
+}
+
+test('fan: trunk goes straight up, children spread around the fork', () => {
+  const people = [
+    { id: 'a', name: 'A', parent: null }, { id: 'b', name: 'B', parent: 'a' }, { id: 'c', name: 'C', parent: 'b' },
+    { id: 'k1', name: 'K1', parent: 'c' }, { id: 'k2', name: 'K2', parent: 'c' }, { id: 'k3', name: 'K3', parent: 'c' }
+  ];
+  const F = layout.computeFan(people);
+  assert.deepEqual(F.chain, ['a', 'b', 'c']);
+  assert.equal(F.forkId, 'c');
+  assert.equal(F.virtual, false);
+  ['a', 'b', 'c'].forEach((id) => assert.equal(F.pos[id].x, 0));
+  assert.ok(F.pos.a.y < F.pos.b.y && F.pos.b.y < F.pos.c.y, 'trunk grows upwards');
+  assert.ok(F.pos.k1.x < F.pos.k2.x && F.pos.k2.x < F.pos.k3.x, 'children keep their order left to right');
+  assert.ok(Math.abs(F.pos.k2.x) < 1e-6, 'middle child is straight above the fork');
+  assert.ok(Math.abs(F.pos.k1.x + F.pos.k3.x) < 1e-6, 'symmetric');
+  assert.ok(F.pos.k1.y > F.pos.c.y - 100, 'children are not far below the fork');
+  assert.equal(fanOverlaps(F.pos), false);
+});
+
+test('fan: family-shaped tree is round (not a flat strip) and nothing overlaps', () => {
+  const people = familyLike();
+  assert.ok(people.length >= 35);
+  const F = layout.computeFan(people);
+  assert.equal(fanOverlaps(F.pos), false);
+  const w = F.bbox.maxX - F.bbox.minX, h = F.bbox.maxY - F.bbox.minY;
+  assert.ok(w / h < 1.9, 'width/height = ' + (w / h).toFixed(2));
+  assert.ok(w / h > 0.6);
+  assert.ok(F.pos[F.chain[0]].y < 200, 'oldest person is at the foot of the trunk');
+  // everybody is above the ground
+  Object.values(F.pos).forEach((p) => assert.ok(p.y - p.h / 2 > 60));
+});
+
+test('fan: children of one person stay inside the angle of that person', () => {
+  const people = familyLike();
+  const F = layout.computeFan(people);
+  const kids = {};
+  people.forEach((p) => { if (p.parent) (kids[p.parent] = kids[p.parent] || []).push(p.id); });
+  Object.keys(kids).forEach((id) => {
+    if (F.pos[id].chain || id === F.forkId) return;
+    const a = F.pos[id].angle;
+    kids[id].forEach((k) => assert.ok(Math.abs(F.pos[k].angle - a) < 0.9, 'child angle near parent angle'));
+  });
+});
+
+test('fan: several roots get a short trunk and spread out; nothing overlaps', () => {
+  const people = [];
+  for (let r = 0; r < 3; r++) {
+    people.push({ id: 'r' + r, name: 'રૂટ' + r, parent: null });
+    for (let k = 0; k < 3; k++) {
+      people.push({ id: 'r' + r + 'k' + k, name: 'બાળ' + k, parent: 'r' + r });
+      people.push({ id: 'r' + r + 'k' + k + 'x', name: 'ઉપ' + k, parent: 'r' + r + 'k' + k });
+    }
+  }
+  const F = layout.computeFan(people);
+  assert.equal(F.virtual, true);
+  assert.deepEqual(F.chain, []);
+  assert.equal(fanOverlaps(F.pos), false);
+  assert.ok(F.pos.r0.x < F.pos.r1.x && F.pos.r1.x < F.pos.r2.x);
+});
+
+test('fan: one person, one chain, and empty list all work', () => {
+  assert.deepEqual(layout.computeFan([]).pos, {});
+  const one = layout.computeFan([{ id: 'a', name: 'A', parent: null }]);
+  assert.equal(one.pos.a.x, 0);
+  assert.ok(one.pos.a.y > 0);
+  const chain = layout.computeFan([
+    { id: 'a', name: 'A', parent: null }, { id: 'b', name: 'B', parent: 'a' }, { id: 'c', name: 'C', parent: 'b' }
+  ]);
+  assert.equal(chain.forkId, 'c');
+  assert.equal(fanOverlaps(chain.pos), false);
+});
+
+test('fan: random big trees never overlap', () => {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  for (let round = 0; round < 6; round++) {
+    const people = [];
+    const total = 20 + Math.floor(rnd() * 120);
+    for (let i = 0; i < total; i++) {
+      const parent = i === 0 || (round === 5 && i < 3) ? null : people[Math.floor(Math.pow(rnd(), 1.3) * i)].id;
+      people.push({ id: 'n' + i, name: 'નામ'.repeat(1 + Math.floor(rnd() * 2)) + i, parent });
+    }
+    const F = layout.computeFan(people);
+    assert.equal(Object.keys(F.pos).length, total);
+    assert.equal(fanOverlaps(F.pos), false, 'round ' + round);
+  }
+});
+
 /* ---------- io ---------- */
 const sample = [
   { id: 'p1', name: 'જીવરાજભાઈ', parent: null },

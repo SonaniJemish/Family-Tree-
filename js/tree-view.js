@@ -1,12 +1,13 @@
 /*
- * "Ped" view: the same family data drawn as a real, round, leafy tree.
+ * "Ped" view: the same family data drawn as a big, hand-drawn style illustrated tree.
  *
- *  - a thick trunk with bark, a flared foot and roots (the oldest people sit on the trunk)
- *  - from the first fork the family spreads like a round crown (see layout.computeFan)
- *  - every branch is a tapered limb: thick at the parent, thin at the child, with twigs
- *  - the crown is made of shaded leaf clusters (light from the sun at the top right),
- *    drawn BEHIND the branches so every parent-child connection stays visible
- *  - sun rays, hills, far trees, grass, flowers, rocks and fallen leaves
+ *  - a wide trunk with a flared foot (the oldest people sit on the trunk)
+ *  - from the first fork the family spreads like a wide crown (see layout.computeFan)
+ *  - every branch is a smooth tapered limb with a dark outline: thick at the parent, thin at the child
+ *  - every branch carries twigs with pointed leaves (olive-yellow and green), like a drawn tree
+ *  - a soft olive-green canopy sits BEHIND the limbs, so every parent-child connection stays visible
+ *  - name tags sit on the limbs; tags on thick limbs tilt along the limb
+ *  - calm pale sky, hazy hills and soft bushes in the corners
  *
  * Everything is generated from the data, so it re-grows by itself.
  * Later this default drawing can be swapped for your own illustration / Figma design.
@@ -20,10 +21,10 @@
 
   var FT = (typeof self !== 'undefined' ? self : globalThis).FT;
   var FONT_ATTR = 'Noto Sans Gujarati, Nirmala UI, Shruti, Lohit Gujarati, Segoe UI, sans-serif';
-  var LEAF_COLORS = ['#2f6b2c', '#3f7a34', '#4f8f3a', '#62a043', '#78b34a', '#93c250', '#b3d05a'];
-  var FALLEN = ['#c9a43a', '#b5782d', '#8f6b2a', '#7aa23f', '#d4b24c'];
-  var FLOWERS = ['#f48fb1', '#ffd54f', '#ffffff', '#ce93d8', '#ff8a65'];
-  var LIGHT = { x: 0.6, y: -0.8 };          // sun is at the top right
+  // olive-yellow, light green, mid green, deep green (like the reference drawing)
+  var LEAF_COLORS = ['#d4ca4b', '#c5c244', '#aac24b', '#8db646', '#72a841', '#5b9439', '#487f33'];
+  var LEAF_LINE = '#3f5a24';
+  var WOOD = '#9b7548', WOOD_LIGHT = '#cfa56f', WOOD_DARK = '#3b2a1a';
 
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -44,9 +45,9 @@
     };
   }
   function r1(x) { return Math.round(x * 10) / 10; }
-  function pick(list, rnd) { return list[Math.floor(rnd() * list.length)]; }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function lerp(a, b, t) { return a + (b - a) * t; }
+  function leafColor(rnd) { return LEAF_COLORS[Math.floor(rnd() * LEAF_COLORS.length)]; }
 
   function bez(p0, c1, c2, p1, t) {
     var u = 1 - t;
@@ -58,7 +59,7 @@
 
   /**
    * A filled ribbon along a centre line with a width at every point.
-   * hi = 0: normal ribbon. hi > 0: the centre line is moved towards the sun (used for highlights).
+   * hi = 0: normal ribbon. hi > 0: the centre line is moved towards the light (used for highlights).
    */
   function ribbon(pts, ws, hi) {
     var L = [], R = [];
@@ -69,7 +70,7 @@
       var nx = -dy / len, ny = dx / len;
       var cx = pts[i].x, cy = pts[i].y;
       if (hi) {
-        var sgn = (nx * LIGHT.x + ny * LIGHT.y) >= 0 ? 1 : -1;
+        var sgn = (nx * 0.6 + ny * -0.8) >= 0 ? 1 : -1;
         cx += nx * sgn * ws[i] * hi;
         cy += ny * sgn * ws[i] * hi;
       }
@@ -80,14 +81,13 @@
     return 'M' + L.join('L') + 'L' + R.reverse().join('L') + 'Z';
   }
 
-  function leafUse(x, y, rot, sc, fill) {
-    var id = '#ft-lf' + (sc > 1.05 ? 1 : 2);
-    return '<use href="' + id + '" xlink:href="' + id + '" transform="translate(' + r1(x) + ' ' + r1(y) +
-      ') rotate(' + Math.round(rot) + ') scale(' + r1(sc) + ')" fill="' + fill + '"/>';
+  function leafUse(x, y, rotDeg, sc, fill) {
+    return '<use href="#ft-lf" xlink:href="#ft-lf" transform="translate(' + r1(x) + ' ' + r1(y) +
+      ') rotate(' + Math.round(rotDeg) + ') scale(' + r1(sc) + ')" fill="' + fill + '"/>';
   }
 
   function cloud(cx, cy, s) {
-    return '<g fill="#fff" opacity="0.82">' +
+    return '<g fill="#fff" opacity="0.7">' +
       '<ellipse cx="' + r1(cx) + '" cy="' + r1(cy) + '" rx="' + r1(78 * s) + '" ry="' + r1(24 * s) + '"/>' +
       '<ellipse cx="' + r1(cx + 46 * s) + '" cy="' + r1(cy - 15 * s) + '" rx="' + r1(50 * s) + '" ry="' + r1(29 * s) + '"/>' +
       '<ellipse cx="' + r1(cx - 44 * s) + '" cy="' + r1(cy - 9 * s) + '" rx="' + r1(42 * s) + '" ry="' + r1(23 * s) + '"/></g>';
@@ -96,11 +96,22 @@
   /** A small far-away tree for the hills. */
   function farTree(x, y, h, rnd) {
     var tw = h * 0.09;
-    var g = '<rect x="' + r1(x - tw / 2) + '" y="' + r1(y - h * 0.42) + '" width="' + r1(tw) + '" height="' + r1(h * 0.42) + '" fill="#6b5a45"/>';
-    var cols = ['#6fa05a', '#7dae63', '#5f9250'];
+    var g = '<rect x="' + r1(x - tw / 2) + '" y="' + r1(y - h * 0.42) + '" width="' + r1(tw) + '" height="' + r1(h * 0.42) + '" fill="#7d6f58"/>';
+    var cols = ['#86ac73', '#93b67b', '#779f66'];
     for (var i = 0; i < 4; i++) {
       var cx = x + (rnd() - 0.5) * h * 0.34, cy = y - h * (0.55 + rnd() * 0.3), rr = h * (0.2 + rnd() * 0.12);
       g += '<circle cx="' + r1(cx) + '" cy="' + r1(cy) + '" r="' + r1(rr) + '" fill="' + cols[i % 3] + '"/>';
+    }
+    return g;
+  }
+
+  /** A soft round bush for the corners. */
+  function bush(cx, cy, r, rnd) {
+    var g = '';
+    for (var i = 0; i < 6; i++) {
+      var bx = cx + (rnd() - 0.5) * r * 1.5, by = cy + (rnd() - 0.5) * r * 0.5, br = r * (0.45 + rnd() * 0.35);
+      g += '<circle cx="' + r1(bx) + '" cy="' + r1(by) + '" r="' + r1(br) + '" fill="url(#ft-bd)"/>';
+      g += '<circle cx="' + r1(bx + br * 0.2) + '" cy="' + r1(by - br * 0.22) + '" r="' + r1(br * 0.62) + '" fill="url(#ft-bm)"/>';
     }
     return g;
   }
@@ -125,7 +136,7 @@
     function SY(y) { return Yg - y; }
 
     var scene = rng(hash('scene'));
-    var trunkW = Math.max(150, Math.min(330, 12 + 22 * Math.sqrt(n)));
+    var trunkW = clamp(24 + 24 * Math.sqrt(n), 190, 380);
     var C = has ? { x: SX(F.center.x), y: SY(F.center.y) } : null;
 
     var out = [];
@@ -134,49 +145,31 @@
 
     /* ---------- definitions ---------- */
     out.push('<defs>' +
-      '<linearGradient id="ft-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d8ec"/><stop offset="0.55" stop-color="#e3f3ec"/><stop offset="1" stop-color="#f6f9e6"/></linearGradient>' +
-      '<radialGradient id="ft-sun"><stop offset="0" stop-color="#fff7c4" stop-opacity="0.95"/><stop offset="1" stop-color="#fff7c4" stop-opacity="0"/></radialGradient>' +
-      '<linearGradient id="ft-hill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc26b"/><stop offset="1" stop-color="#5a9446"/></linearGradient>' +
-      '<linearGradient id="ft-trunk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a2614"/><stop offset="0.22" stop-color="#65401f"/>' +
-      '<stop offset="0.52" stop-color="#9d6c3a"/><stop offset="0.7" stop-color="#85592b"/><stop offset="1" stop-color="#3f2a16"/></linearGradient>' +
-      // shaded leaf clusters: light spot at the upper right, dark at the lower left
-      '<radialGradient id="ft-bd" cx="0.62" cy="0.34" r="0.78"><stop offset="0" stop-color="#3f8a37"/><stop offset="0.6" stop-color="#2d6a2c"/><stop offset="1" stop-color="#1c4a20"/></radialGradient>' +
-      '<radialGradient id="ft-bm" cx="0.62" cy="0.32" r="0.75"><stop offset="0" stop-color="#7cbd52"/><stop offset="0.6" stop-color="#4f9a3d"/><stop offset="1" stop-color="#33782f"/></radialGradient>' +
-      '<radialGradient id="ft-bl" cx="0.6" cy="0.35" r="0.7"><stop offset="0" stop-color="#c3e06a"/><stop offset="0.65" stop-color="#8cc552"/><stop offset="1" stop-color="#5fa844" stop-opacity="0.6"/></radialGradient>' +
-      '<radialGradient id="ft-rock" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#c9ccd0"/><stop offset="1" stop-color="#6d737b"/></radialGradient>' +
-      '<g id="ft-lf1"><path d="M0 0C5 -10 20 -11 32 0C20 11 5 10 0 0Z"/><path d="M2 0L27 0" fill="none" stroke="#2f5a25" stroke-width="0.9" stroke-opacity="0.7"/></g>' +
-      '<g id="ft-lf2"><path d="M0 0C3 -13 22 -14 28 0C22 14 3 13 0 0Z"/><path d="M2 0L23 0" fill="none" stroke="#2f5a25" stroke-width="0.9" stroke-opacity="0.7"/></g>' +
+      '<linearGradient id="ft-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cde2ec"/><stop offset="0.55" stop-color="#e5eee9"/><stop offset="1" stop-color="#f3f2e4"/></linearGradient>' +
+      '<linearGradient id="ft-hill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9cba7c"/><stop offset="1" stop-color="#6f9a52"/></linearGradient>' +
+      '<linearGradient id="ft-trunk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b4129"/><stop offset="0.25" stop-color="#8a6a45"/>' +
+      '<stop offset="0.55" stop-color="#b08a5c"/><stop offset="0.78" stop-color="#977250"/><stop offset="1" stop-color="#5b4129"/></linearGradient>' +
+      // soft canopy: dark base, mid tone, light yellow-green patches
+      '<radialGradient id="ft-bd" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#6c9640"/><stop offset="0.65" stop-color="#5a8a3b"/><stop offset="1" stop-color="#487533"/></radialGradient>' +
+      '<radialGradient id="ft-bm" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#8db04c"/><stop offset="0.65" stop-color="#7aa044"/><stop offset="1" stop-color="#679637"/></radialGradient>' +
+      '<radialGradient id="ft-bl" cx="0.55" cy="0.4" r="0.7"><stop offset="0" stop-color="#bcc658"/><stop offset="0.7" stop-color="#a2b94b"/><stop offset="1" stop-color="#88aa45" stop-opacity="0.5"/></radialGradient>' +
+      '<g id="ft-lf"><path d="M0 0C7 -12 28 -14 50 0C28 14 7 12 0 0Z"/><path d="M3 0L42 0" fill="none" stroke="' + LEAF_LINE + '" stroke-width="1" stroke-opacity="0.6"/></g>' +
       '</defs>');
 
-    /* ---------- sky, sun, rays, clouds, birds ---------- */
+    /* ---------- calm sky, a few clouds ---------- */
     out.push('<rect width="' + W + '" height="' + H + '" fill="url(#ft-sky)"/>');
-    var sunX = W * 0.86, sunY = 190;
-    out.push('<circle cx="' + r1(sunX) + '" cy="' + sunY + '" r="210" fill="url(#ft-sun)"/><circle cx="' + r1(sunX) + '" cy="' + sunY + '" r="56" fill="#fff4b4"/>');
-    var rays = '';
-    for (var rI = 0; rI < 6; rI++) {
-      var ra0 = 2.25 + rI * 0.19, ra1 = ra0 + 0.07, RL = Math.max(W, H) * 1.1;
-      rays += 'M' + r1(sunX) + ' ' + sunY + 'L' + r1(sunX + Math.cos(ra0) * RL) + ' ' + r1(sunY + Math.sin(ra0) * RL) +
-        'L' + r1(sunX + Math.cos(ra1) * RL) + ' ' + r1(sunY + Math.sin(ra1) * RL) + 'Z';
-    }
-    out.push('<path d="' + rays + '" fill="#fffbe0" opacity="0.14"/>');
-    out.push(cloud(W * 0.13, 210, 1.15), cloud(W * 0.30, 118, 0.8), cloud(W * 0.70, 250, 0.95), cloud(W * 0.93, 110, 0.7));
-    var birds = '';
-    for (var bI = 0; bI < 4; bI++) {
-      var bx = W * (0.62 + scene() * 0.28), by = 120 + scene() * 150;
-      birds += 'M' + r1(bx) + ' ' + r1(by) + 'q9 -10 18 0q9 -10 18 0';
-    }
-    out.push('<path d="' + birds + '" fill="none" stroke="#4b5563" stroke-width="2.2" stroke-linecap="round" opacity="0.7"/>');
+    out.push(cloud(W * 0.12, 220, 1.1), cloud(W * 0.9, 150, 1), cloud(W * 0.76, 300, 0.7));
 
-    /* ---------- far mountains, hills and far trees ---------- */
+    /* ---------- hazy mountains, hills and far trees ---------- */
     var mt = 'M0 ' + (Yg - 60);
     var peaks = [0.1, 0.22, 0.36, 0.5, 0.64, 0.78, 0.9, 1];
     peaks.forEach(function (p, i) { mt += 'L' + r1(W * p) + ' ' + r1(Yg - (i % 2 ? 110 : 250) - scene() * 40); });
     mt += 'V' + H + 'H0Z';
-    out.push('<path d="' + mt + '" fill="#a9c6d2" opacity="0.55"/>');
+    out.push('<path d="' + mt + '" fill="#b4cbcb" opacity="0.6"/>');
     out.push('<path d="M0 ' + (Yg - 50) + 'C' + (W * 0.2) + ' ' + (Yg - 200) + ' ' + (W * 0.38) + ' ' + (Yg - 70) + ' ' + (W * 0.55) + ' ' + (Yg - 130) +
-      'S' + (W * 0.88) + ' ' + (Yg - 210) + ' ' + W + ' ' + (Yg - 80) + 'V' + H + 'H0Z" fill="#b6d9a4" opacity="0.8"/>');
+      'S' + (W * 0.88) + ' ' + (Yg - 210) + ' ' + W + ' ' + (Yg - 80) + 'V' + H + 'H0Z" fill="#bcd0b4" opacity="0.85"/>');
     out.push('<path d="M0 ' + (Yg - 20) + 'C' + (W * 0.15) + ' ' + (Yg - 100) + ' ' + (W * 0.35) + ' ' + (Yg - 30) + ' ' + (W * 0.5) + ' ' + (Yg - 62) +
-      'S' + (W * 0.85) + ' ' + (Yg - 110) + ' ' + W + ' ' + (Yg - 30) + 'V' + H + 'H0Z" fill="#9dcb83" opacity="0.9"/>');
+      'S' + (W * 0.85) + ' ' + (Yg - 110) + ' ' + W + ' ' + (Yg - 30) + 'V' + H + 'H0Z" fill="#a6c29c" opacity="0.92"/>');
     var farCount = Math.min(26, Math.round(W / 130));
     var farG = '<g opacity="0.85">';
     for (var fT = 0; fT < farCount; fT++) {
@@ -188,30 +181,52 @@
     // near hill (the ground the tree stands on)
     out.push('<path d="M0 ' + (Yg + 10) + 'C' + (W * 0.25) + ' ' + (Yg - 56) + ' ' + (W * 0.75) + ' ' + (Yg - 56) + ' ' + W + ' ' + (Yg + 10) +
       'V' + H + 'H0Z" fill="url(#ft-hill)"/>');
-    // soft shadow under the crown (a little to the left, the sun is on the right)
+    // soft bushes in the corners
+    out.push(bush(W * 0.04, Yg + 20, 120, scene), bush(W * 0.96, Yg + 10, 130, scene));
+    // soft shadow under the crown
     var shadowRx = Math.min(half * 0.95, 900);
-    out.push('<ellipse cx="' + r1(ox - shadowRx * 0.06) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#2f5d27" opacity="0.2"/>');
-    out.push('<ellipse cx="' + r1(ox - shadowRx * 0.04) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx * 0.6) + '" ry="22" fill="#24491f" opacity="0.22"/>');
+    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#3d6a30" opacity="0.2"/>');
 
     /* ---------- the tree ---------- */
     var P = {};
     var tags = [];
     people.forEach(function (p) {
       var q = F.pos[p.id];
-      P[p.id] = { x: SX(q.x), y: SY(q.y), a: q.angle, chain: q.chain, desc: q.desc, parent: q.parent, w: q.w };
+      P[p.id] = { x: SX(q.x), y: SY(q.y), a: q.angle, chain: q.chain, desc: q.desc, parent: q.parent, w: q.w, rot: 0 };
     });
 
-    var branchDark = [], branchMid = [], branchHi = [], branchBark = [], twigs = [];
-    var tipLeaves = [];                     // leaf bunches at the end of twigs: {x, y, n, seed}
+    var branchDark = [], branchMid = [], branchHi = [], branchBark = [], twigPaths = [], sprigLeaves = [];
     var anchors = [];                       // places where foliage grows: {x, y, r, leaves}
-    var nodeLeaves = Math.max(8, Math.min(46, Math.round(46 - n * 0.12)));
+    var nodeLeaves = Math.max(5, Math.min(20, Math.round(20 - n * 0.05)));
     var maxMid = n > 600 ? 0 : (n > 150 ? 2 : 6);
-    var twigAlong = n > 500 ? 0 : (n > 200 ? 1 : 2);
-    var twigTip = n > 500 ? 1 : 3;
+    var sprigTip = n > 500 ? 1 : (n > 200 ? 2 : 3);
+    var sprigAlong = n > 500 ? 0 : (n > 60 ? 1 : 2);
     var subBlobs = n > 400 ? 0 : (n > 150 ? 1 : 3);
     var forkW0 = 0;                         // total thickness of the limbs that leave the trunk top
 
-    function branchWidth(desc) { return Math.min(trunkW * 0.6, 8 + 11 * Math.sqrt(desc)); }
+    function branchWidth(desc) { return Math.min(trunkW * 0.62, 12 + 14 * Math.sqrt(desc)); }
+
+    /** A twig with pointed leaves on both sides, ending in one leaf. */
+    function sprig(sx, sy, ang, len, rnd, nL, sc) {
+      var curve = (rnd() < 0.5 ? -1 : 1) * (0.2 + rnd() * 0.3);
+      var ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len;
+      var cx = sx + Math.cos(ang - curve) * len * 0.55, cy = sy + Math.sin(ang - curve) * len * 0.55;
+      twigPaths.push('M' + r1(sx) + ' ' + r1(sy) + 'Q' + r1(cx) + ' ' + r1(cy) + ' ' + r1(ex) + ' ' + r1(ey));
+      var side = rnd() < 0.5 ? 1 : -1;
+      for (var i = 0; i < nL; i++) {
+        var t = 0.22 + 0.78 * i / nL;
+        var u = 1 - t;
+        var px = u * u * sx + 2 * u * t * cx + t * t * ex;
+        var py = u * u * sy + 2 * u * t * cy + t * t * ey;
+        var dx = 2 * u * (cx - sx) + 2 * t * (ex - cx);
+        var dy = 2 * u * (cy - sy) + 2 * t * (ey - cy);
+        var a = Math.atan2(dy, dx);
+        side = -side;
+        var la = a + side * (0.62 + rnd() * 0.4);
+        sprigLeaves.push(leafUse(px, py, la * 180 / Math.PI, sc * (1.05 - t * 0.3) * (0.85 + rnd() * 0.3), leafColor(rnd)));
+      }
+      sprigLeaves.push(leafUse(ex, ey, Math.atan2(ey - cy, ex - cx) * 180 / Math.PI, sc * 0.92, leafColor(rnd)));
+    }
 
     if (has) {
       people.forEach(function (p) {
@@ -264,38 +279,82 @@
           branchBark.push(bk);
         }
 
-        // twigs with small leaf bunches
-        var twig = function (sx, sy, ang, len) {
-          var ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len;
-          var cx = sx + Math.cos(ang + 0.5) * len * 0.55, cy = sy + Math.sin(ang + 0.5) * len * 0.55;
-          twigs.push('M' + r1(sx) + ' ' + r1(sy) + 'Q' + r1(cx) + ' ' + r1(cy) + ' ' + r1(ex) + ' ' + r1(ey));
-          tipLeaves.push({ x: ex, y: ey, n: 7, seed: hash(p.id + ':' + twigs.length) });
-        };
         var tn = pts[N], tp = pts[N - 1];
         var tAng = Math.atan2(tn.y - tp.y, tn.x - tp.x);
-        if (q.desc === 0) {
-          for (var tt = 0; tt < twigTip; tt++) {
-            var da = (tt - (twigTip - 1) / 2) * 0.9 + (rnd() - 0.5) * 0.4;
-            twig(tn.x, tn.y, tAng + da, 38 + rnd() * 34);
+
+        // thick limbs: the name tag tilts along the limb (only when the limb is not close to vertical)
+        if (q.desc >= 3) {
+          var deg = tAng * 180 / Math.PI;
+          while (deg > 90) deg -= 180;
+          while (deg < -90) deg += 180;
+          if (Math.abs(deg) <= 50) q.rot = clamp(deg * 0.7, -30, 30);
+        }
+
+        // twigs with pointed leaves: fan at the end of the limb, plus some along it
+        if (sprigTip > 0) {
+          var cnt = q.desc === 0 ? sprigTip : 1;
+          for (var tt = 0; tt < cnt; tt++) {
+            var spread = q.desc === 0 ? (tt - (cnt - 1) / 2) * 0.8 : (rnd() < 0.5 ? -1.15 : 1.15);
+            sprig(tn.x, tn.y, tAng + spread + (rnd() - 0.5) * 0.35, (q.desc === 0 ? 72 : 52) + rnd() * 42, rnd, q.desc === 0 ? 5 : 4, 0.9);
           }
         }
-        for (var ta = 0; ta < twigAlong; ta++) {
-          var ti = Math.floor(N * (0.45 + rnd() * 0.45));
+        for (var ta = 0; ta < sprigAlong; ta++) {
+          var ti = Math.floor(N * (0.55 + rnd() * 0.35));
           var tpnt = pts[ti], tprev = pts[Math.max(0, ti - 1)];
           var base = Math.atan2(tpnt.y - tprev.y, tpnt.x - tprev.x);
-          twig(tpnt.x, tpnt.y, base + (rnd() < 0.5 ? -1 : 1) * (0.7 + rnd() * 0.6), 34 + rnd() * 40);
+          sprig(tpnt.x, tpnt.y, base + (rnd() < 0.5 ? -1 : 1) * (0.8 + rnd() * 0.5), 44 + rnd() * 36, rnd, 3, 0.85);
         }
 
-        // foliage along the branch and at its end
-        var steps = Math.min(maxMid, Math.floor(d / 150));
+        // canopy along the branch and at its end
+        var steps = Math.min(maxMid, Math.floor(d / 110));
         for (var s = 1; s <= steps; s++) {
           var pt = bez(p0, c1, c2, p3, s / (steps + 1));
-          anchors.push({ x: pt.x, y: pt.y, r: 62 + rnd() * 34, leaves: Math.round(nodeLeaves * 0.5) });
+          anchors.push({ x: pt.x, y: pt.y, r: 72 + rnd() * 34, leaves: Math.round(nodeLeaves * 0.5) });
         }
-        anchors.push({ x: q.x, y: q.y, r: 88 + rnd() * 40, leaves: nodeLeaves });
+        anchors.push({ x: q.x, y: q.y, r: 100 + rnd() * 40, leaves: nodeLeaves });
       });
 
-      /* ---- shaded leaf clusters: dark base, mid tone, bright top (all BEHIND the limbs) ---- */
+      /* ---- fill empty holes inside the crown so the canopy is one full dome ---- */
+      if (n <= 400) {
+        var Rmax = 0, maxA = 0;
+        people.forEach(function (pp) {
+          var qq = P[pp.id];
+          if (qq.chain) return;
+          Rmax = Math.max(Rmax, Math.sqrt((qq.x - C.x) * (qq.x - C.x) + (qq.y - C.y) * (qq.y - C.y)));
+          maxA = Math.max(maxA, Math.abs(qq.a));
+        });
+        var cell = 110, grid = {};
+        var gkey = function (x, y) { return Math.floor(x / cell) + ',' + Math.floor(y / cell); };
+        anchors.forEach(function (a) { var k = gkey(a.x, a.y); (grid[k] = grid[k] || []).push(a); });
+        var covered = function (x, y) {
+          var cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+          for (var dx = -2; dx <= 2; dx++) for (var dy = -2; dy <= 2; dy++) {
+            var list = grid[(cx + dx) + ',' + (cy + dy)];
+            if (!list) continue;
+            for (var i = 0; i < list.length; i++) {
+              var ddx = list[i].x - x, ddy = list[i].y - y;
+              if (ddx * ddx + ddy * ddy < list[i].r * list[i].r * 0.7) return true;
+            }
+          }
+          return false;
+        };
+        var added = 0;
+        for (var gy = C.y - Rmax * 1.1; gy < C.y - 20 && added < 400; gy += 80) {
+          for (var gx = C.x - Rmax * 1.1; gx < C.x + Rmax * 1.1 && added < 400; gx += 80) {
+            var pr = Math.sqrt((gx - C.x) * (gx - C.x) + (gy - C.y) * (gy - C.y));
+            if (pr < Rmax * 0.3 || pr > Rmax * 0.95) continue;
+            if (Math.abs(Math.atan2(gx - C.x, C.y - gy)) > maxA) continue;
+            if (covered(gx, gy)) continue;
+            var fa = { x: gx, y: gy, r: 96, leaves: Math.round(nodeLeaves * 0.4) };
+            anchors.push(fa);
+            var fk = gkey(gx, gy);
+            (grid[fk] = grid[fk] || []).push(fa);
+            added++;
+          }
+        }
+      }
+
+      /* ---- soft olive canopy: dark base, mid tone, light patches (all BEHIND the limbs) ---- */
       var bd = '', bm = '', bl2 = '';
       anchors.forEach(function (a, i) {
         var ra = rng(hash('b' + i));
@@ -306,34 +365,30 @@
         }
         blobs.forEach(function (bo) {
           bd += '<circle cx="' + r1(bo.x) + '" cy="' + r1(bo.y) + '" r="' + r1(bo.r * 1.08) + '"/>';
-          bm += '<circle cx="' + r1(bo.x + bo.r * 0.1) + '" cy="' + r1(bo.y - bo.r * 0.12) + '" r="' + r1(bo.r * 0.8) + '"/>';
-          bl2 += '<circle cx="' + r1(bo.x + bo.r * 0.24) + '" cy="' + r1(bo.y - bo.r * 0.3) + '" r="' + r1(bo.r * 0.46) + '"/>';
+          bm += '<circle cx="' + r1(bo.x + bo.r * 0.1) + '" cy="' + r1(bo.y - bo.r * 0.1) + '" r="' + r1(bo.r * 0.78) + '"/>';
+          bl2 += '<circle cx="' + r1(bo.x + bo.r * 0.2) + '" cy="' + r1(bo.y - bo.r * 0.22) + '" r="' + r1(bo.r * 0.42) + '"/>';
         });
       });
       out.push('<g fill="url(#ft-bd)">' + bd + '</g>');
       out.push('<g fill="url(#ft-bm)" opacity="0.92">' + bm + '</g>');
-      out.push('<g fill="url(#ft-bl)" opacity="0.8">' + bl2 + '</g>');
+      out.push('<g fill="url(#ft-bl)" opacity="0.7">' + bl2 + '</g>');
 
-      /* ---- single leaves on top of the clusters ---- */
+      /* ---- loose leaves scattered on the canopy (behind the limbs) ---- */
       var leaves = [];
       anchors.forEach(function (a, i) {
         var rl = rng(hash('l' + i));
         for (var j = 0; j < a.leaves; j++) {
           var ang = rl() * Math.PI * 2;
           var rad = Math.sqrt(rl()) * a.r * 1.1;
-          var lx = a.x + Math.cos(ang) * rad * 1.25;
-          var ly = a.y + Math.sin(ang) * rad * 0.95 - 4;
-          var lit = (Math.cos(ang) - Math.sin(ang)) / 2;            // + = towards the sun
-          var ci = clamp(Math.floor((0.5 + lit * 0.42 + (rl() - 0.5) * 0.55) * LEAF_COLORS.length), 0, LEAF_COLORS.length - 1);
-          leaves.push(leafUse(lx, ly, rl() * 360, 0.75 + rl() * 0.85, LEAF_COLORS[ci]));
+          leaves.push(leafUse(a.x + Math.cos(ang) * rad * 1.3, a.y + Math.sin(ang) * rad * 1.0 - 4, rl() * 360, 0.7 + rl() * 0.6, leafColor(rl)));
         }
       });
-      out.push('<g stroke="#2f5a25" stroke-width="0.7" stroke-opacity="0.7">' + leaves.join('') + '</g>');
+      out.push('<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.75">' + leaves.join('') + '</g>');
 
       /* ---- trunk: flared foot, slight sway, tapering up to the fork ---- */
       var wb = trunkW, fl = trunkW * 0.34;
-      var wt = clamp(forkW0 * 0.8, trunkW * 0.42, trunkW * 0.78);   // the trunk top is as thick as the limbs it carries
-      var yb = Yg + 24, yt = C.y + 6;
+      var wt = clamp(forkW0 * 0.7, trunkW * 0.42, trunkW * 0.78);   // the trunk top is as thick as the limbs it carries
+      var yb = Yg + 24, yt = C.y + 34;
       var rb = rng(hash('bark'));
       var SM = 26;
       var tl = [], tr = [], cen = [];
@@ -348,7 +403,7 @@
         tr.push(r1(cx2 + hw) + ' ' + r1(yy));
         cen.push({ x: cx2, y: yy, hw: hw });
       }
-      var topCapY = yt - wt * 0.4;
+      var topCapY = yt - wt * 0.2;
       var trunkD = 'M' + tl.join('L') + 'Q' + r1(ox + sway(1)) + ' ' + r1(topCapY) + ' ' + tr[SM] + 'L' + tr.slice().reverse().join('L') + 'Z';
 
       var trunk = [];
@@ -366,7 +421,7 @@
           var rpts = [], rws = [], rws2 = [];
           for (var rk = 0; rk <= 10; rk++) {
             rpts.push(bez(rp0, rc1, rc2, rp1, rk / 10));
-            var rw = lerp(30 - ri * 4, 4, Math.pow(rk / 10, 0.7));
+            var rw = lerp(32 - ri * 4, 4, Math.pow(rk / 10, 0.7));
             rws.push(rw + 5);
             rws2.push(rw);
           }
@@ -374,18 +429,18 @@
           rootPaths += ribbon(rpts, rws2);
         }
       });
-      trunk.push('<path d="' + rootDark + '" fill="#2e1b0b"/>');
-      trunk.push('<path d="' + rootPaths + '" fill="#6d4724"/>');
+      trunk.push('<path d="' + rootDark + '" fill="' + WOOD_DARK + '"/>');
+      trunk.push('<path d="' + rootPaths + '" fill="#8a6a45"/>');
 
-      trunk.push('<path d="' + trunkD + '" fill="url(#ft-trunk)" stroke="#2e1b0b" stroke-width="3.5" stroke-linejoin="round"/>');
-      // lit band on the sun side, shadow band on the other side
+      trunk.push('<path d="' + trunkD + '" fill="url(#ft-trunk)" stroke="' + WOOD_DARK + '" stroke-width="3.5" stroke-linejoin="round"/>');
+      // lit band on one side, shadow band on the other side
       var litD = '', shade = '';
       for (var li = 0; li <= SM; li++) litD += (li ? 'L' : 'M') + r1(cen[li].x + cen[li].hw * 0.28) + ' ' + r1(cen[li].y);
       for (var lj = SM; lj >= 0; lj--) litD += 'L' + r1(cen[lj].x + cen[lj].hw * 0.62) + ' ' + r1(cen[lj].y);
       for (var si2 = 0; si2 <= SM; si2++) shade += (si2 ? 'L' : 'M') + r1(cen[si2].x - cen[si2].hw * 1.0) + ' ' + r1(cen[si2].y);
       for (var sj = SM; sj >= 0; sj--) shade += 'L' + r1(cen[sj].x - cen[sj].hw * 0.55) + ' ' + r1(cen[sj].y);
-      trunk.push('<path d="' + litD + 'Z" fill="#d9ab6d" opacity="0.2"/>');
-      trunk.push('<path d="' + shade + 'Z" fill="#1d1005" opacity="0.28"/>');
+      trunk.push('<path d="' + litD + 'Z" fill="#e6c88f" opacity="0.22"/>');
+      trunk.push('<path d="' + shade + 'Z" fill="#2b1c0e" opacity="0.22"/>');
       // bark: long wavy grooves that follow the trunk, plus short cracks
       var grooves = '';
       for (var g = 0; g < 14; g++) {
@@ -397,58 +452,41 @@
           grooves += (gi > from ? 'L' : '') + r1(cen[gi].x + gu * cen[gi].hw + wob) + ' ' + r1(cen[gi].y);
         }
       }
-      trunk.push('<path d="' + grooves + '" fill="none" stroke="#24150a" stroke-opacity="0.38" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>');
+      trunk.push('<path d="' + grooves + '" fill="none" stroke="' + WOOD_DARK + '" stroke-opacity="0.32" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>');
       var cracks = '';
-      for (var cr = 0; cr < 26; cr++) {
+      for (var cr = 0; cr < 22; cr++) {
         var ci2 = Math.floor(rb() * SM);
         var cx3 = cen[ci2].x + (rb() - 0.5) * 1.6 * cen[ci2].hw;
         cracks += 'M' + r1(cx3) + ' ' + r1(cen[ci2].y) + 'l' + r1((rb() - 0.5) * 16) + ' ' + r1(-5 - rb() * 9);
       }
-      trunk.push('<path d="' + cracks + '" fill="none" stroke="#1d1005" stroke-opacity="0.4" stroke-width="2" stroke-linecap="round"/>');
+      trunk.push('<path d="' + cracks + '" fill="none" stroke="' + WOOD_DARK + '" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>');
       // knot hole
       var ki = Math.floor(SM * 0.38);
       var kx = cen[ki].x - cen[ki].hw * 0.22, ky = cen[ki].y;
-      trunk.push('<ellipse cx="' + r1(kx) + '" cy="' + r1(ky) + '" rx="15" ry="24" fill="#6d4724" stroke="#2e1b0b" stroke-width="2.5"/>' +
-        '<ellipse cx="' + r1(kx + 1) + '" cy="' + r1(ky + 3) + '" rx="9" ry="17" fill="#1d1005"/>');
+      trunk.push('<ellipse cx="' + r1(kx) + '" cy="' + r1(ky) + '" rx="15" ry="24" fill="#7a5a38" stroke="' + WOOD_DARK + '" stroke-width="2.5"/>' +
+        '<ellipse cx="' + r1(kx + 1) + '" cy="' + r1(ky + 3) + '" rx="9" ry="17" fill="#2b1c0e"/>');
       // moss at the foot
-      trunk.push('<g fill="#4f8a3a" opacity="0.55"><ellipse cx="' + r1(ox - wb * 0.28) + '" cy="' + r1(yb - 22) + '" rx="' + r1(wb * 0.16) + '" ry="16"/>' +
+      trunk.push('<g fill="#6a9a48" opacity="0.4"><ellipse cx="' + r1(ox - wb * 0.28) + '" cy="' + r1(yb - 22) + '" rx="' + r1(wb * 0.16) + '" ry="16"/>' +
         '<ellipse cx="' + r1(ox + wb * 0.05) + '" cy="' + r1(yb - 12) + '" rx="' + r1(wb * 0.1) + '" ry="11"/></g>');
       out.push(trunk.join(''));
 
-      /* ---- limbs: dark outline first, then wood, then sun highlight and bark ---- */
-      out.push('<path d="' + branchDark.join('') + '" fill="#2f1c0c"/>');
-      out.push('<path d="' + branchMid.join('') + '" fill="#84552a"/>');
-      out.push('<path d="' + branchHi.join('') + '" fill="#cf9f63" opacity="0.6"/>');
+      /* ---- limbs: dark outline first, then wood, then light edge and bark ---- */
+      out.push('<path d="' + branchDark.join('') + '" fill="' + WOOD_DARK + '"/>');
+      out.push('<path d="' + branchMid.join('') + '" fill="' + WOOD + '"/>');
+      out.push('<path d="' + branchHi.join('') + '" fill="' + WOOD_LIGHT + '" opacity="0.6"/>');
       if (branchBark.length) {
-        out.push('<path d="' + branchBark.join('') + '" fill="none" stroke="#2a1809" stroke-opacity="0.3" stroke-width="2" stroke-dasharray="4 11" stroke-linecap="round"/>');
+        out.push('<path d="' + branchBark.join('') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-opacity="0.28" stroke-width="2" stroke-dasharray="4 11" stroke-linecap="round"/>');
       }
-      if (twigs.length) {
-        out.push('<path d="' + twigs.join('') + '" fill="none" stroke="#3b2410" stroke-width="4.6" stroke-linecap="round"/>');
-        out.push('<path d="' + twigs.join('') + '" fill="none" stroke="#7c5129" stroke-width="2.8" stroke-linecap="round"/>');
+      // twigs, then their pointed leaves (in front of the limbs; tags come last)
+      if (twigPaths.length) {
+        out.push('<path d="' + twigPaths.join('') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-width="4.4" stroke-linecap="round"/>');
+        out.push('<path d="' + twigPaths.join('') + '" fill="none" stroke="#a07a4e" stroke-width="2.4" stroke-linecap="round"/>');
       }
-      // leaf bunches at the twig tips (in front of the limbs, but small)
-      var tl2 = [];
-      tipLeaves.forEach(function (tb) {
-        var rt = rng(tb.seed);
-        for (var j = 0; j < tb.n; j++) {
-          var ang = rt() * Math.PI * 2, rad = Math.sqrt(rt()) * 24;
-          var lit2 = (Math.cos(ang) - Math.sin(ang)) / 2;
-          var ci3 = clamp(Math.floor((0.55 + lit2 * 0.4 + (rt() - 0.5) * 0.5) * LEAF_COLORS.length), 0, LEAF_COLORS.length - 1);
-          tl2.push(leafUse(tb.x + Math.cos(ang) * rad, tb.y + Math.sin(ang) * rad * 0.8, rt() * 360, 0.8 + rt() * 0.6, LEAF_COLORS[ci3]));
-        }
-      });
-      out.push('<g stroke="#2f5a25" stroke-width="0.7" stroke-opacity="0.7">' + tl2.join('') + '</g>');
+      out.push('<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.85">' + sprigLeaves.join('') + '</g>');
     }
 
-    /* ---------- ground details drawn in front of the foot of the trunk ---------- */
-    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 30) + '" rx="' + r1(trunkW * 0.62) + '" ry="11" fill="#3f7a34" opacity="0.9"/>');
-    // rocks
-    for (var rk2 = 0; rk2 < 3; rk2++) {
-      var rxp = ox + (rk2 === 0 ? -1 : 1) * (trunkW * (0.95 + scene() * 0.9)) + (rk2 === 2 ? trunkW * 1.4 : 0);
-      var ryp = Yg + 38 + scene() * 26, rw2 = 20 + scene() * 22;
-      out.push('<ellipse cx="' + r1(rxp) + '" cy="' + r1(ryp) + '" rx="' + r1(rw2) + '" ry="' + r1(rw2 * 0.6) + '" fill="url(#ft-rock)" stroke="#575d65" stroke-width="1.5"/>');
-    }
-    // grass: darker back row and brighter front row
+    /* ---------- ground: soft grass only ---------- */
+    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 30) + '" rx="' + r1(trunkW * 0.62) + '" ry="11" fill="#5d8f45" opacity="0.9"/>');
     function grass(count, y0, y1, color, hmin, hrng) {
       var tufts = '';
       for (var tI = 0; tI < count; tI++) {
@@ -461,34 +499,19 @@
       }
       out.push('<path d="' + tufts + '" fill="none" stroke="' + color + '" stroke-width="2.6" stroke-linecap="round"/>');
     }
-    var tuftCount = Math.min(170, Math.round(W / 14));
-    grass(tuftCount, 4, 60, '#3c7a32', 12, 12);
-    grass(tuftCount, 40, 120, '#55a040', 14, 16);
-    // fallen leaves
-    var fallen = '';
-    for (var fl2 = 0; fl2 < 26; fl2++) {
-      var flx = ox + (scene() - 0.5) * Math.min(W * 0.8, half * 2 + 300), fly = Yg + 24 + scene() * 100;
-      fallen += leafUse(flx, fly, scene() * 360, 0.45 + scene() * 0.35, pick(FALLEN, scene));
-    }
-    out.push('<g opacity="0.9">' + fallen + '</g>');
-    var flowers = '';
-    for (var fI = 0; fI < 34; fI++) {
-      var fx = ox + (scene() - 0.5) * Math.min(W * 0.8, trunkW * 7), fy = Yg + 14 + scene() * 100;
-      var fr = 3.5 + scene() * 3;
-      flowers += '<g><path d="M' + r1(fx) + ' ' + r1(fy) + 'v' + r1(fr * 3) + '" stroke="#3f7a34" stroke-width="2"/>' +
-        '<circle cx="' + r1(fx) + '" cy="' + r1(fy) + '" r="' + r1(fr) + '" fill="' + pick(FLOWERS, scene) + '"/>' +
-        '<circle cx="' + r1(fx) + '" cy="' + r1(fy) + '" r="' + r1(fr * 0.35) + '" fill="#ffb300"/></g>';
-    }
-    out.push(flowers);
+    var tuftCount = Math.min(150, Math.round(W / 16));
+    grass(tuftCount, 4, 60, '#4f8040', 12, 12);
+    grass(tuftCount, 40, 120, '#6aa04e', 14, 16);
 
     /* ---------- name tags ---------- */
     people.forEach(function (p) {
       var q = P[p.id];
       var tw = q.w, tx = q.x - tw / 2, ty = q.y - TAGH / 2;
       var label = p.wife ? (p.name + ' & ' + p.wife) : p.name;
-      tags.push('<g><rect x="' + r1(tx + 2) + '" y="' + r1(ty + 3) + '" width="' + tw + '" height="' + TAGH + '" rx="12" fill="#000" opacity="0.2"/>' +
-        '<rect x="' + r1(tx) + '" y="' + r1(ty) + '" width="' + tw + '" height="' + TAGH + '" rx="12" fill="#f8e7c3" stroke="#4b3019" stroke-width="2"/>' +
-        '<text x="' + r1(q.x) + '" y="' + r1(q.y + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="26" font-weight="700" fill="#2f1d0c">' +
+      var tr2 = q.rot ? ' transform="rotate(' + r1(q.rot) + ' ' + r1(q.x) + ' ' + r1(q.y) + ')"' : '';
+      tags.push('<g' + tr2 + '><rect x="' + r1(tx + 2) + '" y="' + r1(ty + 3) + '" width="' + tw + '" height="' + TAGH + '" rx="11" fill="#000" opacity="0.16"/>' +
+        '<rect x="' + r1(tx) + '" y="' + r1(ty) + '" width="' + tw + '" height="' + TAGH + '" rx="11" fill="#f7e9c6" stroke="#6b4a28" stroke-width="1.8"/>' +
+        '<text x="' + r1(q.x) + '" y="' + r1(q.y + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="26" font-weight="700" fill="#33220f">' +
         esc(label) + '</text></g>');
     });
     out.push(tags.join(''));
@@ -496,14 +519,8 @@
     /* ---------- title ---------- */
     var title = String(data.title || '');
     var fs = Math.max(30, 64 - Math.max(0, Array.from(title).length - 14) * 1.6);
-    var tcx = W / 2;
-    out.push('<text x="' + r1(tcx) + '" y="100" text-anchor="middle" dominant-baseline="central" font-size="' + r1(fs) +
-      '" font-weight="800" fill="#3a2714">' + esc(title) + '</text>');
-    var span = Math.min(420, Math.max(220, Array.from(title).length * fs * 0.36));
-    out.push('<path d="M' + r1(tcx - span) + ' 150Q' + r1(tcx) + ' 176 ' + r1(tcx + span) + ' 150" fill="none" stroke="#7a4f27" stroke-width="4" stroke-linecap="round"/>');
-    [-1, 1].forEach(function (sd) {
-      out.push('<use href="#ft-lf1" xlink:href="#ft-lf1" transform="translate(' + r1(tcx + sd * (span + 6)) + ' 150) rotate(' + (sd < 0 ? 200 : -20) + ') scale(1.3)" fill="#62a043" stroke="#2f5a25" stroke-width="0.8"/>');
-    });
+    out.push('<text x="' + r1(W / 2) + '" y="110" text-anchor="middle" dominant-baseline="central" font-size="' + r1(fs) +
+      '" font-weight="800" fill="#3b2a1a">' + esc(title) + '</text>');
 
     out.push('</svg>');
     return { svg: out.join(''), width: W, height: H };

@@ -227,7 +227,8 @@
     var sprigTip = n > 500 ? 1 : (n > 200 ? 2 : 3);
     var sprigAlong = n > 500 ? 0 : (n > 60 ? 1 : 2);
     var subBlobs = n > 400 ? 0 : (n > 150 ? 1 : 3);
-    var forkW0 = 0;                         // total thickness of the limbs that leave the trunk top
+    var trunkTopW = trunkW * 0.7;           // ONE value: width of the trunk top = start width of every limb that leaves it
+    var forkW0 = 0;                       // total thickness of the limbs that leave the trunk top
 
     function branchWidth(desc) { return Math.min(trunkW * 0.62, 12 + 14 * Math.sqrt(desc)); }
 
@@ -272,7 +273,8 @@
 
         // tapered limb: thick where it leaves the parent, thinner towards the child
         var bw = branchWidth(q.desc);
-        var w0 = parentIsFan ? bw * 1.1 : Math.min(trunkW * 0.62, bw * 1.25);
+        // limbs leaving the trunk start exactly as wide as the trunk top, so trunk and limbs join with no step
+        var w0 = parentIsFan ? bw * 1.1 : trunkTopW;
         var w1 = Math.max(4, bw * 0.55);
         if (!parentIsFan) forkW0 += w0;
         var N = clamp(Math.ceil(d / 16), 8, 30);
@@ -289,7 +291,7 @@
         var midD = ribbon(pts, wsMid);
         if (AS && n <= 300) {
           // the bark grooves must run along the limb: turn the picture to the limb direction
-          var ref = bez(p0, c1, c2, p3, parentIsFan ? 0.5 : 0.2);   // limbs from the trunk: follow the way they leave it
+          var ref = bez(p0, c1, c2, p3, parentIsFan ? 0.5 : 0.08);  // limbs from the trunk leave it straight up: grooves match the trunk
           limbTex.push({ d: midD, a: Math.atan2(ref.y - p0.y, ref.x - p0.x) * 180 / Math.PI - 90 });
         } else if (AS) {
           barkShared.push(midD);               // very big trees: one shared picture for all limbs (same colour)
@@ -421,7 +423,7 @@
 
       /* ---- trunk: flared foot, slight sway, tapering up to the fork ---- */
       var wb = trunkW, fl = trunkW * 0.34;
-      var wt = clamp(forkW0 * 0.6, trunkW * 0.4, trunkW * 0.72);   // the trunk top is as thick as the limbs it carries
+      var wt = trunkTopW;                    // same value the limbs start with
       var yb = Yg + 24, yt = C.y - 14;       // the trunk runs up into the fork, hidden under the limbs
       var rb = rng(hash('bark'));
       var SM = 26;

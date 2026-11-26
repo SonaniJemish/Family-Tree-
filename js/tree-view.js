@@ -139,6 +139,29 @@
     var trunkW = clamp(24 + 24 * Math.sqrt(n), 190, 380);
     var C = has ? { x: SX(F.center.x), y: SY(F.center.y) } : null;
 
+    // Figma art (js/assets.js): real shaded leaves and a bark picture. Without it the flat drawing is used.
+    var AS = FT.assets || null;
+    var realLeaves = !!AS && n <= 250;      // very big trees keep the light flat leaves, so they stay fast
+
+    function assetDefs() {
+      var d = '';
+      AS.leaves.forEach(function (L, i) { d += L.defs + '<g id="ft-leaf' + (i + 1) + '">' + L.body + '</g>'; });
+      d += '<image id="ft-barkimg" width="256" height="256" href="' + AS.bark + '"/>';
+      d += '<pattern id="ft-barkP" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="scale(1.1)"><use href="#ft-barkimg"/></pattern>';
+      return d;
+    }
+
+    /** One leaf. Real (Figma) leaf when possible, otherwise the flat one. */
+    function leafAt(x, y, rotDeg, sc, rnd) {
+      if (!realLeaves) return leafUse(x, y, rotDeg, sc, leafColor(rnd));
+      var k = Math.floor(rnd() * AS.leaves.length);
+      var L = AS.leaves[k];
+      var s = (sc * 0.19).toFixed(3);
+      var sy = rnd() < 0.5 ? -s : s;           // mirror some leaves so they do not all look the same
+      return '<use href="#ft-leaf' + (k + 1) + '" transform="translate(' + r1(x) + ' ' + r1(y) + ') rotate(' + Math.round(rotDeg) +
+        ') scale(' + s + ' ' + sy + ') translate(' + (-L.bx) + ' ' + (-L.by) + ')"/>';
+    }
+
     var out = [];
     out.push('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + W + '" height="' + H +
       '" viewBox="0 0 ' + W + ' ' + H + '" font-family="' + FONT_ATTR + '">');
@@ -153,6 +176,7 @@
       '<radialGradient id="ft-bd" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#6c9640"/><stop offset="0.65" stop-color="#5a8a3b"/><stop offset="1" stop-color="#487533"/></radialGradient>' +
       '<radialGradient id="ft-bm" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#8db04c"/><stop offset="0.65" stop-color="#7aa044"/><stop offset="1" stop-color="#679637"/></radialGradient>' +
       '<radialGradient id="ft-bl" cx="0.55" cy="0.4" r="0.7"><stop offset="0" stop-color="#bcc658"/><stop offset="0.7" stop-color="#a2b94b"/><stop offset="1" stop-color="#88aa45" stop-opacity="0.5"/></radialGradient>' +
+      (AS ? assetDefs() : '') +
       '<g id="ft-lf"><path d="M0 0C7 -12 28 -14 50 0C28 14 7 12 0 0Z"/><path d="M3 0L42 0" fill="none" stroke="' + LEAF_LINE + '" stroke-width="1" stroke-opacity="0.6"/></g>' +
       '</defs>');
 
@@ -196,6 +220,7 @@
     });
 
     var branchDark = [], branchMid = [], branchHi = [], branchBark = [], twigPaths = [], sprigLeaves = [];
+    var limbTex = [];                       // thick limbs that get the bark picture: {d, a}
     var anchors = [];                       // places where foliage grows: {x, y, r, leaves}
     var nodeLeaves = Math.max(5, Math.min(20, Math.round(20 - n * 0.05)));
     var maxMid = n > 600 ? 0 : (n > 150 ? 2 : 6);
@@ -223,9 +248,9 @@
         var a = Math.atan2(dy, dx);
         side = -side;
         var la = a + side * (0.62 + rnd() * 0.4);
-        sprigLeaves.push(leafUse(px, py, la * 180 / Math.PI, sc * (1.05 - t * 0.3) * (0.85 + rnd() * 0.3), leafColor(rnd)));
+        sprigLeaves.push(leafAt(px, py, la * 180 / Math.PI, sc * (1.05 - t * 0.3) * (0.85 + rnd() * 0.3), rnd));
       }
-      sprigLeaves.push(leafUse(ex, ey, Math.atan2(ey - cy, ex - cx) * 180 / Math.PI, sc * 0.92, leafColor(rnd)));
+      sprigLeaves.push(leafAt(ex, ey, Math.atan2(ey - cy, ex - cx) * 180 / Math.PI, sc * 0.92, rnd));
     }
 
     if (has) {
@@ -261,7 +286,14 @@
           wsHi.push(Math.max(1.4, wi * 0.2));
         }
         branchDark.push(ribbon(pts, ws));
-        branchMid.push(ribbon(pts, wsMid));
+        var midD = ribbon(pts, wsMid);
+        if (AS && q.desc >= 2 && limbTex.length < 160) {
+          // the bark grooves must run along the limb: turn the picture to the limb direction
+          var ref = bez(p0, c1, c2, p3, parentIsFan ? 0.5 : 0.2);   // limbs from the trunk: follow the way they leave it
+          limbTex.push({ d: midD, a: Math.atan2(ref.y - p0.y, ref.x - p0.x) * 180 / Math.PI - 90 });
+        } else {
+          branchMid.push(midD);
+        }
         branchHi.push(ribbon(pts, wsHi, 0.22));
         if (bw >= 22) {
           // rough bark lines along thick limbs
@@ -430,9 +462,9 @@
         }
       });
       trunk.push('<path d="' + rootDark + '" fill="' + WOOD_DARK + '"/>');
-      trunk.push('<path d="' + rootPaths + '" fill="#8a6a45"/>');
+      trunk.push('<path d="' + rootPaths + '" fill="' + (AS ? 'url(#ft-barkP)' : '#8a6a45') + '"/>');
 
-      trunk.push('<path d="' + trunkD + '" fill="url(#ft-trunk)" stroke="' + WOOD_DARK + '" stroke-width="3.5" stroke-linejoin="round"/>');
+      trunk.push('<path d="' + trunkD + '" fill="url(#' + (AS ? 'ft-barkP' : 'ft-trunk') + ')" stroke="' + WOOD_DARK + '" stroke-width="3.5" stroke-linejoin="round"/>');
       // lit band on one side, shadow band on the other side
       var litD = '', shade = '';
       for (var li = 0; li <= SM; li++) litD += (li ? 'L' : 'M') + r1(cen[li].x + cen[li].hw * 0.28) + ' ' + r1(cen[li].y);
@@ -473,7 +505,15 @@
       /* ---- limbs: dark outline first, then wood, then light edge and bark ---- */
       out.push('<path d="' + branchDark.join('') + '" fill="' + WOOD_DARK + '"/>');
       out.push('<path d="' + branchMid.join('') + '" fill="' + WOOD + '"/>');
-      out.push('<path d="' + branchHi.join('') + '" fill="' + WOOD_LIGHT + '" opacity="0.6"/>');
+      if (limbTex.length) {
+        var pats = '', texD = '';
+        limbTex.forEach(function (lt, i) {
+          pats += '<pattern id="ft-bk' + i + '" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="rotate(' + r1(lt.a) + ') scale(0.7)"><use href="#ft-barkimg"/></pattern>';
+          texD += '<path d="' + lt.d + '" fill="url(#ft-bk' + i + ')"/>';
+        });
+        out.push('<defs>' + pats + '</defs>' + texD);
+      }
+      out.push('<path d="' + branchHi.join('') + '" fill="' + WOOD_LIGHT + '" opacity="' + (AS ? 0.3 : 0.6) + '"/>');
       if (branchBark.length) {
         out.push('<path d="' + branchBark.join('') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-opacity="0.28" stroke-width="2" stroke-dasharray="4 11" stroke-linecap="round"/>');
       }

@@ -76,7 +76,10 @@ js/io.js            JSON and CSV import/export and checking
 js/translit.js      English letters to Gujarati suggestions
 js/canvas-view.js   the Canvas view
 js/tree-view.js     the Tree (ped) drawing
+js/assets.js        leaves and bark made in Figma (made by tools/build-assets.js)
 js/app.js           connects everything
+assets/             the Figma art (leaf SVGs and bark picture) + how to change it
+tools/              build-assets.js turns the art into js/assets.js
 sample/             a small example family (JSON and CSV)
 tests/              tests
 ```
@@ -95,4 +98,4 @@ NODE_PATH=<folder where playwright is installed> node tests/e2e.js
 
 ## Changing the tree design later
 
-The tree is drawn by code in `js/tree-view.js`. Later, your own illustration or Figma design can replace this file. The rest of the app stays the same.
+The tree is drawn by code in `js/tree-view.js`, with real leaf and bark art from Figma (see `assets/README.md`). Later, your own illustration or Figma design can replace this file. The rest of the app stays the same.

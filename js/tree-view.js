@@ -147,7 +147,7 @@
       var d = '';
       AS.leaves.forEach(function (L, i) { d += L.defs + '<g id="ft-leaf' + (i + 1) + '">' + L.body + '</g>'; });
       d += '<image id="ft-barkimg" width="256" height="256" href="' + AS.bark + '"/>';
-      d += '<pattern id="ft-barkP" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="scale(1.1)"><use href="#ft-barkimg"/></pattern>';
+      d += '<pattern id="ft-barkP" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="scale(0.85)"><use href="#ft-barkimg"/></pattern>';
       return d;
     }
 
@@ -220,7 +220,7 @@
     });
 
     var branchDark = [], branchMid = [], branchHi = [], branchBark = [], twigPaths = [], sprigLeaves = [];
-    var limbTex = [];                       // thick limbs that get the bark picture: {d, a}
+    var limbTex = [], barkShared = [];      // limbs that get the bark picture: {d, a}
     var anchors = [];                       // places where foliage grows: {x, y, r, leaves}
     var nodeLeaves = Math.max(5, Math.min(20, Math.round(20 - n * 0.05)));
     var maxMid = n > 600 ? 0 : (n > 150 ? 2 : 6);
@@ -281,16 +281,18 @@
           var t = i / N;
           pts.push(bez(p0, c1, c2, p3, t));
           var wi = lerp(w0, w1, Math.pow(t, 0.8));
-          ws.push(wi + 5);
+          ws.push(wi + 5 * Math.min(1, i / 4));
           wsMid.push(wi);
           wsHi.push(Math.max(1.4, wi * 0.2));
         }
         branchDark.push(ribbon(pts, ws));
         var midD = ribbon(pts, wsMid);
-        if (AS && q.desc >= 2 && limbTex.length < 160) {
+        if (AS && n <= 300) {
           // the bark grooves must run along the limb: turn the picture to the limb direction
           var ref = bez(p0, c1, c2, p3, parentIsFan ? 0.5 : 0.2);   // limbs from the trunk: follow the way they leave it
           limbTex.push({ d: midD, a: Math.atan2(ref.y - p0.y, ref.x - p0.x) * 180 / Math.PI - 90 });
+        } else if (AS) {
+          barkShared.push(midD);               // very big trees: one shared picture for all limbs (same colour)
         } else {
           branchMid.push(midD);
         }
@@ -419,8 +421,8 @@
 
       /* ---- trunk: flared foot, slight sway, tapering up to the fork ---- */
       var wb = trunkW, fl = trunkW * 0.34;
-      var wt = clamp(forkW0 * 0.7, trunkW * 0.42, trunkW * 0.78);   // the trunk top is as thick as the limbs it carries
-      var yb = Yg + 24, yt = C.y + 34;
+      var wt = clamp(forkW0 * 0.6, trunkW * 0.4, trunkW * 0.72);   // the trunk top is as thick as the limbs it carries
+      var yb = Yg + 24, yt = C.y - 14;       // the trunk runs up into the fork, hidden under the limbs
       var rb = rng(hash('bark'));
       var SM = 26;
       var tl = [], tr = [], cen = [];
@@ -464,7 +466,9 @@
       trunk.push('<path d="' + rootDark + '" fill="' + WOOD_DARK + '"/>');
       trunk.push('<path d="' + rootPaths + '" fill="' + (AS ? 'url(#ft-barkP)' : '#8a6a45') + '"/>');
 
-      trunk.push('<path d="' + trunkD + '" fill="url(#' + (AS ? 'ft-barkP' : 'ft-trunk') + ')" stroke="' + WOOD_DARK + '" stroke-width="3.5" stroke-linejoin="round"/>');
+      trunk.push('<path d="' + trunkD + '" fill="url(#' + (AS ? 'ft-barkP' : 'ft-trunk') + ')"/>');
+      // outline only along the two sides (a line across the top would look like a cut)
+      trunk.push('<path d="M' + tl.join('L') + 'M' + tr.join('L') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>');
       // lit band on one side, shadow band on the other side
       var litD = '', shade = '';
       for (var li = 0; li <= SM; li++) litD += (li ? 'L' : 'M') + r1(cen[li].x + cen[li].hw * 0.28) + ' ' + r1(cen[li].y);
@@ -504,17 +508,18 @@
 
       /* ---- limbs: dark outline first, then wood, then light edge and bark ---- */
       out.push('<path d="' + branchDark.join('') + '" fill="' + WOOD_DARK + '"/>');
-      out.push('<path d="' + branchMid.join('') + '" fill="' + WOOD + '"/>');
+      if (branchMid.length) out.push('<path d="' + branchMid.join('') + '" fill="' + WOOD + '"/>');
+      if (barkShared.length) out.push('<path d="' + barkShared.join('') + '" fill="url(#ft-barkP)"/>');
       if (limbTex.length) {
         var pats = '', texD = '';
         limbTex.forEach(function (lt, i) {
-          pats += '<pattern id="ft-bk' + i + '" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="rotate(' + r1(lt.a) + ') scale(0.7)"><use href="#ft-barkimg"/></pattern>';
+          pats += '<pattern id="ft-bk' + i + '" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="rotate(' + r1(lt.a) + ') scale(0.85)"><use href="#ft-barkimg"/></pattern>';
           texD += '<path d="' + lt.d + '" fill="url(#ft-bk' + i + ')"/>';
         });
         out.push('<defs>' + pats + '</defs>' + texD);
       }
       out.push('<path d="' + branchHi.join('') + '" fill="' + WOOD_LIGHT + '" opacity="' + (AS ? 0.3 : 0.6) + '"/>');
-      if (branchBark.length) {
+      if (branchBark.length && !AS) {
         out.push('<path d="' + branchBark.join('') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-opacity="0.28" stroke-width="2" stroke-dasharray="4 11" stroke-linecap="round"/>');
       }
       // twigs, then their pointed leaves (in front of the limbs; tags come last)

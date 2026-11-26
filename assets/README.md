@@ -5,7 +5,8 @@ These pictures were made in Figma and are used by the Tree view (`js/tree-view.j
 | File | What it is |
 |---|---|
 | `leaf-1.svg` ... `leaf-4.svg` | Four shaded leaves (olive-yellow, light green, deep green, pale green). Transparent background. |
-| `bark.jpg` | Seamless bark picture. It is used on the trunk, the roots and the thick branches. |
+| `bark.jpg` | Seamless bark picture, made a little lighter. It is used on the trunk, the roots and every branch. |
+| `bark-original.jpg` | The bark picture exactly as it came from Figma (before making it lighter). |
 
 Figma file: https://www.figma.com/design/gvjCkS8VE7Z2n8Vsqix3qP
 (page 1, frame "leaf sheet" has 8 leaves; `leaf-1..4` are the first four. The bark picture is the second frame.)

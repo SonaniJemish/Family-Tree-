@@ -13,3 +13,7 @@ How to change the art
 3. `node tools/build-assets.js`  (puts everything into `js/assets.js`)
 
 The pictures are placed inside `js/assets.js` on purpose: when the tree is saved as PNG or PDF, the SVG is turned into an image, and an image made that way cannot load other files.
+
+Scene with Krishna and the cows
+- `photo/krishna-cows.jpg` is the picture (on a flat magenta background); `tools/make-photo-assets.py` cuts the magenta out.
+- It is drawn to the right of the trunk, on the ground, in `js/tree-view.js` (look for "Krishna playing the flute").

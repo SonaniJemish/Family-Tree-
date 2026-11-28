@@ -645,7 +645,7 @@
             next();
           };
           rd.readAsArrayBuffer(jpg);
-        }, 'image/jpeg', 0.92);
+        }, 'image/jpeg', 0.86);
       }
       next();
     };

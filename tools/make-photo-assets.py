@@ -37,7 +37,7 @@ seamless_tile(fol, 640, 1.0).save(os.path.join(OUT, 'foliage-tile.jpg'), quality
 
 # ---- background
 bg = Image.open(os.path.join(ROOT, 'background.jpg')).convert('RGB')
-bg.save(os.path.join(OUT, 'background.jpg'), quality=84, optimize=True)
+bg.save(os.path.join(OUT, 'background.jpg'), quality=82, optimize=True)
 
 # ---- single leaves cut out of the white sheet, all turned "tip up", stalk at the bottom centre
 sheet = Image.open(os.path.join(ROOT, 'leaves-sheet.jpg')).convert('RGB')
@@ -79,3 +79,37 @@ for idx in sorted(order, key=lambda i: ndi.center_of_mass(solid, lab, i + 1)[0] 
     im.save(os.path.join(OUT, 'leaf-%d.png' % (k + 1)), optimize=True)
     k += 1
 print('leaves cut:', k)
+
+
+# ---- Krishna with the flute and the cows: cut out of the flat magenta (#FF00FF) background
+kc = np.asarray(Image.open(os.path.join(ROOT, 'krishna-cows.jpg')).convert('RGB')).astype(np.float32)
+R_, G_, B_ = kc[..., 0], kc[..., 1], kc[..., 2]
+m = np.minimum(R_, B_) - G_                              # big for magenta, small for pink flowers / skin / clothes
+al = 1.0 - np.clip((m - 70.0) / 110.0, 0, 1)
+al = np.where(m > 180, 0.0, al)
+# keep only the biggest connected piece plus pieces near it (drops stray specks)
+lab, nlab = ndi.label(al > 0.5)
+sz = ndi.sum(al > 0.5, lab, range(1, nlab + 1))
+keep = np.zeros_like(al, bool)
+for i, z in enumerate(sz):
+    if z > 400: keep |= (lab == i + 1)
+keep = ndi.binary_dilation(keep, iterations=3)
+al = al * keep
+# take the magenta out of the soft edge (no pink fringe)
+a3 = np.maximum(al, 1e-3)[..., None]
+key = np.array([255.0, 0.0, 255.0])
+rgb = np.clip((kc - (1 - a3) * key) / a3, 0, 255)
+# remaining pink tint on the edge: pull red/blue down to green where the pixel is mostly edge
+edge = (al > 0) & (al < 0.95)
+tint = np.clip(np.minimum(rgb[..., 0], rgb[..., 2]) - rgb[..., 1], 0, 255) * edge
+rgb[..., 0] -= tint * 0.5
+rgb[..., 2] -= tint * 0.5
+img = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), al * 255.0]).astype(np.uint8), 'RGBA')
+img = img.crop(img.getbbox())
+img = img.resize((900, round(img.height * 900 / img.width)), Image.LANCZOS)
+img.save(os.path.join(OUT, 'krishna-cows.png'), optimize=True)
+try:
+    img.save(os.path.join(OUT, 'krishna-cows.webp'), quality=88, method=6)
+except Exception as e:
+    print('no webp', e)
+print('krishna scene', img.size)

@@ -637,6 +637,17 @@
     grass(tuftCount, 4, 60, '#4f8040', 12, 12);
     grass(tuftCount, 40, 120, '#6aa04e', 14, 16);
 
+    /* ---------- Krishna playing the flute, with cows, to the right of the trunk ---------- */
+    if (photo && AS.scene) {
+      var scW = Math.max(trunkW * 5.4, W * 0.17);
+      var scLeft = ox + trunkW * 0.95;
+      scW = Math.min(scW, W - scLeft - 20);
+      var scH = scW * AS.scene.h / AS.scene.w;
+      var scBottom = Yg + 38;
+      out.push('<ellipse cx="' + r1(scLeft + scW * 0.5) + '" cy="' + r1(scBottom - scH * 0.03) + '" rx="' + r1(scW * 0.5) + '" ry="' + r1(scH * 0.06) + '" fill="#1d3a12" opacity="0.28"/>');
+      out.push('<image x="' + r1(scLeft) + '" y="' + r1(scBottom - scH) + '" width="' + r1(scW) + '" height="' + r1(scH) + '" href="' + AS.scene.uri + '"/>');
+    }
+
     /* ---------- name tags ---------- */
     people.forEach(function (p) {
       var q = P[p.id];

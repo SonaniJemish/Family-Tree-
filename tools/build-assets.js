@@ -39,6 +39,8 @@ for (let i = 1; fs.existsSync(path.join(dir, 'leaf-' + i + '.png')); i++) leaves
 const bark = jpg(path.join(dir, 'bark-tile.jpg'));
 const foliage = jpg(path.join(dir, 'foliage-tile.jpg'));
 const bg = jpg(path.join(dir, 'background.jpg'));
+const kSize = png(path.join(dir, 'krishna-cows.png'));                    // same size as the webp below
+const kWebp = 'data:image/webp;base64,' + fs.readFileSync(path.join(dir, 'krishna-cows.webp')).toString('base64');
 
 const assets = {
   photo: true,
@@ -46,7 +48,8 @@ const assets = {
   leafLen: 190,                        // height of a leaf picture in pixels
   bark: bark.uri, barkSize: bark.w, barkScale: 0.42,
   foliage: foliage.uri, foliageSize: foliage.w, foliageScale: 0.9,
-  bg: { uri: bg.uri, w: bg.w, h: bg.h, meadowTop: 0.64, topColor: '#8cbeeb' }
+  bg: { uri: bg.uri, w: bg.w, h: bg.h, meadowTop: 0.64, topColor: '#6dafed' },
+  scene: { uri: kWebp, w: kSize.w, h: kSize.h }          // Krishna playing the flute, with cows (sits right of the trunk)
 };
 
 const out =
@@ -58,4 +61,4 @@ const out =
   "})(typeof self !== 'undefined' ? self : globalThis);\n";
 
 fs.writeFileSync(path.join(root, 'js', 'assets.js'), out);
-console.log('js/assets.js written: ' + leaves.length + ' leaves, bark ' + bark.w + 'px, foliage ' + foliage.w + 'px, background ' + bg.w + 'x' + bg.h + ', total ' + Math.round(out.length / 1024) + ' KB');
+console.log('js/assets.js written: ' + leaves.length + ' leaves, Krishna scene, bark ' + bark.w + 'px, foliage ' + foliage.w + 'px, background ' + bg.w + 'x' + bg.h + ', total ' + Math.round(out.length / 1024) + ' KB');

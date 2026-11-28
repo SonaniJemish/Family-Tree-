@@ -1,22 +1,15 @@
-# Tree art (made in Figma)
+# Art used by the tree
 
-These pictures were made in Figma and are used by the Tree view (`js/tree-view.js`).
+The tree, leaves and background are real-looking pictures made with Figma's image maker.
 
-| File | What it is |
-|---|---|
-| `leaf-1.svg` ... `leaf-4.svg` | Four shaded leaves (olive-yellow, light green, deep green, pale green). Transparent background. |
-| `bark.jpg` | Seamless bark picture, made a little lighter. It is used on the trunk, the roots and every branch. |
-| `bark-original.jpg` | The bark picture exactly as it came from Figma (before making it lighter). |
+Folders
+- `photo/` - the 4 big source pictures (background, leaves sheet, foliage, bark). Figma file: https://www.figma.com/design/gvjCkS8VE7Z2n8Vsqix3qP
+- `photo/processed/` - the small pieces made from them (8 cut-out leaves, seamless bark tile, seamless foliage tile, background)
+- `leaf-*.svg`, `bark*.jpg` - the older drawn art (not used any more, kept for history)
 
-Figma file: https://www.figma.com/design/gvjCkS8VE7Z2n8Vsqix3qP
-(page 1, frame "leaf sheet" has 8 leaves; `leaf-1..4` are the first four. The bark picture is the second frame.)
+How to change the art
+1. Put a new picture in `photo/` with the same file name.
+2. `python3 tools/make-photo-assets.py`  (cuts the leaves, makes the seamless tiles)
+3. `node tools/build-assets.js`  (puts everything into `js/assets.js`)
 
-## How to change the art
-
-1. Change the file in Figma and export it again (SVG for leaves, picture for bark).
-2. Put the new files in this folder with the same names.
-3. Run `node tools/build-assets.js`. It rewrites `js/assets.js`.
-4. Open the app and look at the Tree view.
-
-`js/assets.js` is made by that command. Do not edit it by hand.
-If two leaves are not the same size, set where the leaf touches the twig in `tools/build-assets.js` (`BASES`).
+The pictures are placed inside `js/assets.js` on purpose: when the tree is saved as PNG or PDF, the SVG is turned into an image, and an image made that way cannot load other files.

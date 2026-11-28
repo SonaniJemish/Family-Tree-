@@ -143,23 +143,26 @@
     var AS = FT.assets || null;
     var realLeaves = !!AS && n <= 250;      // very big trees keep the light flat leaves, so they stay fast
 
+    var photo = !!(AS && AS.photo);
     function assetDefs() {
       var d = '';
-      AS.leaves.forEach(function (L, i) { d += L.defs + '<g id="ft-leaf' + (i + 1) + '">' + L.body + '</g>'; });
-      d += '<image id="ft-barkimg" width="256" height="256" href="' + AS.bark + '"/>';
-      d += '<pattern id="ft-barkP" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="scale(0.85)"><use href="#ft-barkimg"/></pattern>';
+      AS.leaves.forEach(function (L, i) { d += '<image id="ft-leaf' + (i + 1) + '" width="' + L.w + '" height="' + L.h + '" href="' + L.uri + '"/>'; });
+      d += '<image id="ft-barkimg" width="' + AS.barkSize + '" height="' + AS.barkSize + '" href="' + AS.bark + '"/>';
+      d += '<pattern id="ft-barkP" patternUnits="userSpaceOnUse" width="' + AS.barkSize + '" height="' + AS.barkSize + '" patternTransform="scale(' + AS.barkScale + ')"><use href="#ft-barkimg"/></pattern>';
+      d += '<image id="ft-folimg" width="' + AS.foliageSize + '" height="' + AS.foliageSize + '" href="' + AS.foliage + '"/>';
+      d += '<pattern id="ft-folP" patternUnits="userSpaceOnUse" width="' + AS.foliageSize + '" height="' + AS.foliageSize + '" patternTransform="scale(' + AS.foliageScale + ')"><use href="#ft-folimg"/></pattern>';
       return d;
     }
 
-    /** One leaf. Real (Figma) leaf when possible, otherwise the flat one. */
+    /** One leaf: a real photographed leaf (tip up, stalk at its foot) turned so it points along rotDeg. */
     function leafAt(x, y, rotDeg, sc, rnd) {
       if (!realLeaves) return leafUse(x, y, rotDeg, sc, leafColor(rnd));
       var k = Math.floor(rnd() * AS.leaves.length);
       var L = AS.leaves[k];
-      var s = (sc * 0.19).toFixed(3);
-      var sy = rnd() < 0.5 ? -s : s;           // mirror some leaves so they do not all look the same
-      return '<use href="#ft-leaf' + (k + 1) + '" transform="translate(' + r1(x) + ' ' + r1(y) + ') rotate(' + Math.round(rotDeg) +
-        ') scale(' + s + ' ' + sy + ') translate(' + (-L.bx) + ' ' + (-L.by) + ')"/>';
+      var s = (62 * sc / AS.leafLen).toFixed(3);               // about 62 px long at sc = 1
+      var sx = rnd() < 0.5 ? -s : s;                           // mirror some leaves so they do not all look the same
+      return '<use href="#ft-leaf' + (k + 1) + '" transform="translate(' + r1(x) + ' ' + r1(y) + ') rotate(' + Math.round(rotDeg + 90) +
+        ') scale(' + sx + ' ' + s + ') translate(' + r1(-L.w / 2) + ' ' + r1(-L.h * 0.985) + ')"/>';
     }
 
     var out = [];
@@ -175,12 +178,25 @@
       // soft canopy: dark base, mid tone, light yellow-green patches
       '<radialGradient id="ft-bd" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#6c9640"/><stop offset="0.65" stop-color="#5a8a3b"/><stop offset="1" stop-color="#487533"/></radialGradient>' +
       '<radialGradient id="ft-bm" cx="0.55" cy="0.4" r="0.75"><stop offset="0" stop-color="#8db04c"/><stop offset="0.65" stop-color="#7aa044"/><stop offset="1" stop-color="#679637"/></radialGradient>' +
+      '<radialGradient id="ft-shade" cx="0.5" cy="0.45" r="0.62"><stop offset="0" stop-color="#0a2a08" stop-opacity="0"/><stop offset="0.62" stop-color="#0a2a08" stop-opacity="0"/><stop offset="1" stop-color="#0a2a08" stop-opacity="0.6"/></radialGradient>' +
       '<radialGradient id="ft-bl" cx="0.55" cy="0.4" r="0.7"><stop offset="0" stop-color="#bcc658"/><stop offset="0.7" stop-color="#a2b94b"/><stop offset="1" stop-color="#88aa45" stop-opacity="0.5"/></radialGradient>' +
       (AS ? assetDefs() : '') +
       '<g id="ft-lf"><path d="M0 0C7 -12 28 -14 50 0C28 14 7 12 0 0Z"/><path d="M3 0L42 0" fill="none" stroke="' + LEAF_LINE + '" stroke-width="1" stroke-opacity="0.6"/></g>' +
       '</defs>');
 
-    /* ---------- calm sky, a few clouds ---------- */
+    /* ---------- background ---------- */
+    if (photo && AS.bg) {
+      // a real landscape photo: sky, far hills and a meadow. It is as wide as the picture and sits on the bottom edge,
+      // so the meadow is under the trunk; above it the sky colour simply goes on.
+      var bgS = Math.max(W / AS.bg.w, H * 0.8 / AS.bg.h);
+      var bgW = AS.bg.w * bgS, bgH = AS.bg.h * bgS, bgX = (W - bgW) / 2, bgY = H - bgH;
+      out.push('<defs><linearGradient id="ft-bgfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset="0.16" stop-color="#fff"/></linearGradient>' +
+        '<mask id="ft-bgmask" maskUnits="userSpaceOnUse" x="' + r1(bgX) + '" y="' + r1(bgY) + '" width="' + r1(bgW) + '" height="' + r1(bgH) + '">' +
+        '<rect x="' + r1(bgX) + '" y="' + r1(bgY) + '" width="' + r1(bgW) + '" height="' + r1(bgH) + '" fill="url(#ft-bgfade)"/></mask></defs>');
+      out.push('<rect width="' + W + '" height="' + H + '" fill="' + AS.bg.topColor + '"/>');
+      out.push('<image x="' + r1(bgX) + '" y="' + r1(bgY) + '" width="' + r1(bgW) + '" height="' + r1(bgH) +
+        '" preserveAspectRatio="none" href="' + AS.bg.uri + '" mask="url(#ft-bgmask)"/>');
+    } else {
     out.push('<rect width="' + W + '" height="' + H + '" fill="url(#ft-sky)"/>');
     out.push(cloud(W * 0.12, 220, 1.1), cloud(W * 0.9, 150, 1), cloud(W * 0.76, 300, 0.7));
 
@@ -207,9 +223,11 @@
       'V' + H + 'H0Z" fill="url(#ft-hill)"/>');
     // soft bushes in the corners
     out.push(bush(W * 0.04, Yg + 20, 120, scene), bush(W * 0.96, Yg + 10, 130, scene));
+
+    }
     // soft shadow under the crown
     var shadowRx = Math.min(half * 0.95, 900);
-    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#3d6a30" opacity="0.2"/>');
+    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#2f5a25" opacity="' + (photo ? 0.28 : 0.2) + '"/>');
 
     /* ---------- the tree ---------- */
     var P = {};
@@ -292,7 +310,7 @@
         if (AS && n <= 300) {
           // the bark grooves must run along the limb: turn the picture to the limb direction
           var ref = bez(p0, c1, c2, p3, parentIsFan ? 0.5 : 0.08);  // limbs from the trunk leave it straight up: grooves match the trunk
-          limbTex.push({ d: midD, a: Math.atan2(ref.y - p0.y, ref.x - p0.x) * 180 / Math.PI - 90 });
+          limbTex.push({ d: midD, a: Math.atan2(ref.y - p0.y, ref.x - p0.x) * 180 / Math.PI - 90, px: p0.x, py: p0.y });
         } else if (AS) {
           barkShared.push(midD);               // very big trees: one shared picture for all limbs (same colour)
         } else {
@@ -378,7 +396,7 @@
         for (var gy = C.y - Rmax * 1.1; gy < C.y - 20 && added < 400; gy += 80) {
           for (var gx = C.x - Rmax * 1.1; gx < C.x + Rmax * 1.1 && added < 400; gx += 80) {
             var pr = Math.sqrt((gx - C.x) * (gx - C.x) + (gy - C.y) * (gy - C.y));
-            if (pr < Rmax * 0.3 || pr > Rmax * 0.95) continue;
+            if (pr < Rmax * 0.16 || pr > Rmax * 0.95) continue;
             if (Math.abs(Math.atan2(gx - C.x, C.y - gy)) > maxA) continue;
             if (covered(gx, gy)) continue;
             var fa = { x: gx, y: gy, r: 96, leaves: Math.round(nodeLeaves * 0.4) };
@@ -405,21 +423,84 @@
           bl2 += '<circle cx="' + r1(bo.x + bo.r * 0.2) + '" cy="' + r1(bo.y - bo.r * 0.22) + '" r="' + r1(bo.r * 0.42) + '"/>';
         });
       });
-      out.push('<g fill="url(#ft-bd)">' + bd + '</g>');
-      out.push('<g fill="url(#ft-bm)" opacity="0.92">' + bm + '</g>');
-      out.push('<g fill="url(#ft-bl)" opacity="0.7">' + bl2 + '</g>');
+      if (photo) {
+        // the crown is a real foliage photo seen through the circles (same picture everywhere, so it flows from one circle to the next);
+        // a soft shade at the circle edges and a few sunny patches give it depth
+        out.push('<defs><g id="ft-crown">' + bd + '</g><g id="ft-crownL">' + bl2 + '</g></defs>');
+        out.push('<use href="#ft-crown" fill="url(#ft-folP)"/>');
+        out.push('<use href="#ft-crown" fill="url(#ft-shade)" opacity="0.5"/>');
+        out.push('<use href="#ft-crownL" fill="url(#ft-bl)" opacity="0.1"/>');
+        // one big light over the whole crown: sun from the upper left (like the sky photo), shade lower right
+        var cx0 = 1e9, cx1 = -1e9, cy0 = 1e9, cy1 = -1e9;
+        anchors.forEach(function (a) { cx0 = Math.min(cx0, a.x - a.r); cx1 = Math.max(cx1, a.x + a.r); cy0 = Math.min(cy0, a.y - a.r); cy1 = Math.max(cy1, a.y + a.r); });
+        out.push('<defs><linearGradient id="ft-sun" gradientUnits="userSpaceOnUse" x1="' + r1(cx0) + '" y1="' + r1(cy0) + '" x2="' + r1(cx1) + '" y2="' + r1(cy1) + '">' +
+          '<stop offset="0" stop-color="#fff2b0" stop-opacity="0.2"/><stop offset="0.45" stop-color="#fff2b0" stop-opacity="0"/>' +
+          '<stop offset="1" stop-color="#0c2a0c" stop-opacity="0.42"/></linearGradient></defs>');
+        // painted ONCE over the joined crown shape (a clip path), so overlapping circles do not add up to a grey haze
+        out.push('<defs><clipPath id="ft-crownclip">' + bd + '</clipPath></defs>');
+        out.push('<rect x="' + r1(cx0) + '" y="' + r1(cy0) + '" width="' + r1(cx1 - cx0) + '" height="' + r1(cy1 - cy0) + '" fill="url(#ft-sun)" clip-path="url(#ft-crownclip)"/>');
+      } else {
+        out.push('<g fill="url(#ft-bd)">' + bd + '</g>');
+        out.push('<g fill="url(#ft-bm)" opacity="0.92">' + bm + '</g>');
+        out.push('<g fill="url(#ft-bl)" opacity="0.7">' + bl2 + '</g>');
+      }
 
       /* ---- loose leaves scattered on the canopy (behind the limbs) ---- */
       var leaves = [];
+      var leafBudget = 2600;                 // real leaves are pictures: keep their number small so phones stay fast
+      var leafScale = 1;
+      if (photo) {
+        var wantLeaves = 0;
+        anchors.forEach(function (a) { wantLeaves += Math.ceil(a.leaves * 0.35); });
+        leafScale = wantLeaves > leafBudget ? leafBudget / wantLeaves : 1;
+      }
       anchors.forEach(function (a, i) {
         var rl = rng(hash('l' + i));
+        if (photo) {
+          if (!realLeaves) return;           // big trees: the foliage picture alone is the crown
+          var cnt = Math.round(Math.ceil(a.leaves * 0.35) * leafScale);
+          for (var j2 = 0; j2 < cnt; j2++) {
+            var ang2 = rl() * Math.PI * 2;
+            var rad2 = a.r * (0.5 + rl() * 0.7);          // most leaves sit near the rim, so the crown edge is leafy
+            leaves.push(leafAt(a.x + Math.cos(ang2) * rad2 * 1.25, a.y + Math.sin(ang2) * rad2 * 0.95 - 4, rl() * 360, 0.75 + rl() * 0.7, rl));
+          }
+          return;
+        }
         for (var j = 0; j < a.leaves; j++) {
           var ang = rl() * Math.PI * 2;
           var rad = Math.sqrt(rl()) * a.r * 1.1;
           leaves.push(leafUse(a.x + Math.cos(ang) * rad * 1.3, a.y + Math.sin(ang) * rad * 1.0 - 4, rl() * 360, 0.7 + rl() * 0.6, leafColor(rl)));
         }
       });
-      out.push('<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.75">' + leaves.join('') + '</g>');
+      if (photo && realLeaves) {
+        var rc = 120, rg = {};
+        anchors.forEach(function (a) { var k = Math.floor(a.x / rc) + ',' + Math.floor(a.y / rc); (rg[k] = rg[k] || []).push(a); });
+        var insideOther = function (x, y, self) {
+          var cx = Math.floor(x / rc), cy = Math.floor(y / rc);
+          for (var dx = -2; dx <= 2; dx++) for (var dy = -2; dy <= 2; dy++) {
+            var list = rg[(cx + dx) + ',' + (cy + dy)];
+            if (!list) continue;
+            for (var q2 = 0; q2 < list.length; q2++) {
+              if (list[q2] === self) continue;
+              var ex = list[q2].x - x, ey = list[q2].y - y;
+              if (ex * ex + ey * ey < list[q2].r * list[q2].r * 0.85) return true;
+            }
+          }
+          return false;
+        };
+        anchors.forEach(function (a, i) {
+          var rr = rng(hash('r' + i));
+          var cnt = Math.ceil(a.r / 11);
+          for (var k = 0; k < cnt; k++) {
+            var an = rr() * Math.PI * 2;
+            var px = a.x + Math.cos(an) * a.r * 1.04, py = a.y + Math.sin(an) * a.r * 1.0;
+            if (insideOther(px, py, a)) continue;
+            leaves.push(leafAt(px, py, an * 180 / Math.PI + (rr() - 0.5) * 80, 0.95 + rr() * 0.6, rr));
+          }
+        });
+      }
+      out.push(photo ? '<g>' + leaves.join('') + '</g>' :
+        '<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.75">' + leaves.join('') + '</g>');
 
       /* ---- trunk: flared foot, slight sway, tapering up to the fork ---- */
       var wb = trunkW, fl = trunkW * 0.34;
@@ -515,7 +596,8 @@
       if (limbTex.length) {
         var pats = '', texD = '';
         limbTex.forEach(function (lt, i) {
-          pats += '<pattern id="ft-bk' + i + '" patternUnits="userSpaceOnUse" width="256" height="256" patternTransform="rotate(' + r1(lt.a) + ') scale(0.85)"><use href="#ft-barkimg"/></pattern>';
+          pats += '<pattern id="ft-bk' + i + '" patternUnits="userSpaceOnUse" width="' + AS.barkSize + '" height="' + AS.barkSize + '" patternTransform="translate(' + r1(lt.px) + ' ' + r1(lt.py) +
+            ') rotate(' + r1(lt.a) + ') translate(' + r1(-lt.px) + ' ' + r1(-lt.py) + ') scale(' + AS.barkScale + ')"><use href="#ft-barkimg"/></pattern>';
           texD += '<path d="' + lt.d + '" fill="url(#ft-bk' + i + ')"/>';
         });
         out.push('<defs>' + pats + '</defs>' + texD);
@@ -529,16 +611,21 @@
         out.push('<path d="' + twigPaths.join('') + '" fill="none" stroke="' + WOOD_DARK + '" stroke-width="4.4" stroke-linecap="round"/>');
         out.push('<path d="' + twigPaths.join('') + '" fill="none" stroke="#a07a4e" stroke-width="2.4" stroke-linecap="round"/>');
       }
-      out.push('<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.85">' + sprigLeaves.join('') + '</g>');
+      out.push(photo ? '<g>' + sprigLeaves.join('') + '</g>' :
+        '<g stroke="' + LEAF_LINE + '" stroke-width="1.2" stroke-opacity="0.85">' + sprigLeaves.join('') + '</g>');
     }
 
     /* ---------- ground: soft grass only ---------- */
-    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 30) + '" rx="' + r1(trunkW * 0.62) + '" ry="11" fill="#5d8f45" opacity="0.9"/>');
+    if (photo) {       // on the real meadow: a soft dark contact shadow instead of a flat green patch
+      out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 24) + '" rx="' + r1(trunkW * 0.7) + '" ry="14" fill="#1d3a12" opacity="0.35"/>');
+    } else {
+      out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 30) + '" rx="' + r1(trunkW * 0.62) + '" ry="11" fill="#5d8f45" opacity="0.9"/>');
+    }
     function grass(count, y0, y1, color, hmin, hrng) {
       var tufts = '';
       for (var tI = 0; tI < count; tI++) {
         var tx = scene() * W, ty = Yg + y0 + scene() * (y1 - y0);
-        if (scene() < 0.4) { tx = ox + (scene() - 0.5) * trunkW * 3.4; ty = Yg + 14 + scene() * 40; }
+        if (photo || scene() < 0.4) { tx = ox + (scene() - 0.5) * trunkW * 3.4; ty = Yg + 14 + scene() * 40; }
         var hh = hmin + scene() * hrng;
         tufts += 'M' + r1(tx) + ' ' + r1(ty) + 'q-4 ' + r1(-hh * 0.6) + ' -8 ' + r1(-hh) +
           'M' + r1(tx) + ' ' + r1(ty) + 'q0 ' + r1(-hh * 0.7) + ' 1 ' + r1(-hh * 1.2) +
@@ -546,7 +633,7 @@
       }
       out.push('<path d="' + tufts + '" fill="none" stroke="' + color + '" stroke-width="2.6" stroke-linecap="round"/>');
     }
-    var tuftCount = Math.min(150, Math.round(W / 16));
+    var tuftCount = photo ? 36 : Math.min(150, Math.round(W / 16));
     grass(tuftCount, 4, 60, '#4f8040', 12, 12);
     grass(tuftCount, 40, 120, '#6aa04e', 14, 16);
 

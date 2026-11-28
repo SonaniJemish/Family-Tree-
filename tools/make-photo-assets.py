@@ -9,6 +9,7 @@ from scipy import ndimage as ndi
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'photo')
 OUT = os.path.join(ROOT, 'processed')
+BG_BLUR, BG_COLOR, BG_LIGHT = 3.2, 0.86, 0.26     # how soft, how colourful, how much lighter the background is
 os.makedirs(OUT, exist_ok=True)
 
 def seamless_tile(im, size, brighten=1.0):
@@ -36,8 +37,16 @@ fol = Image.open(os.path.join(ROOT, 'foliage.jpg')).convert('RGB')
 seamless_tile(fol, 640, 1.0).save(os.path.join(OUT, 'foliage-tile.jpg'), quality=82, optimize=True)
 
 # ---- background
+# the background is made lighter and a little soft (like a camera focused on the tree), so the tree and the
+# Krishna scene stand out from it
+from PIL import ImageFilter
 bg = Image.open(os.path.join(ROOT, 'background.jpg')).convert('RGB')
+bg = bg.filter(ImageFilter.GaussianBlur(BG_BLUR))
+bg = ImageEnhance.Color(bg).enhance(BG_COLOR)
+bg = Image.blend(bg, Image.new('RGB', bg.size, (240, 246, 250)), BG_LIGHT)
 bg.save(os.path.join(OUT, 'background.jpg'), quality=82, optimize=True)
+_top = np.asarray(bg)[:6].reshape(-1, 3).mean(0)
+print('background top colour: #%02x%02x%02x' % tuple(int(v) for v in _top))
 
 # ---- single leaves cut out of the white sheet, all turned "tip up", stalk at the bottom centre
 sheet = Image.open(os.path.join(ROOT, 'leaves-sheet.jpg')).convert('RGB')

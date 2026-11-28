@@ -306,25 +306,3 @@ body {
 .hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; min-height: 1em; }
 .hint.small { font-size: 12px; margin-top: 14px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
-
-/* ---------- print ---------- */
-.print-area { display: none; }
-@media print {
-  @page { margin: 0; }
-  html, body.printing {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
-    display: block; overflow: hidden; background: #fff;
-  }
-  body.printing > :not(.print-area) { display: none !important; }
-  body.printing .print-area {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; height: 100%;
-    page-break-inside: avoid; break-inside: avoid;
-  }
-  body.printing .print-area svg {
-    width: 100%; height: 100%;
-    max-width: 100%; max-height: 100vh;
-    display: block;
-  }
-}

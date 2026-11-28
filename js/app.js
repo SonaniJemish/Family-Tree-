@@ -17,7 +17,7 @@
   var canvasLayer = $('#canvasLayer'), treeLayer = $('#treeLayer');
   var actionbar = $('#actionbar'), emptyEl = $('#empty');
   var titleEl = $('#title'), treeTitleInput = $('#treeTitleInput'), dirtyEl = $('#dirty');
-  var fileInput = $('#fileInput'), printArea = $('#printArea');
+  var fileInput = $('#fileInput');
 
   var store = new FT.Store();
   store.load();
@@ -577,47 +577,47 @@
     store.markExported();
   }
 
-  function exportPNG() {
+  /** Draws the tree picture on a canvas. Phones have a pixel limit, so big trees are drawn a bit smaller. */
+  function drawTreePicture(whiteBack, done, fail) {
     var b = FT.TreeView.build(store.data);
     var blob = new Blob([b.svg], { type: 'image/svg+xml;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var img = new Image();
     img.onload = function () {
-      var scale = Math.min(2, 8000 / Math.max(b.width, b.height));
+      var scale = Math.min(2, 8000 / Math.max(b.width, b.height), Math.sqrt(14000000 / (b.width * b.height)));
       var c = document.createElement('canvas');
-      c.width = Math.round(b.width * scale);
-      c.height = Math.round(b.height * scale);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.width = Math.max(1, Math.round(b.width * scale));
+      c.height = Math.max(1, Math.round(b.height * scale));
+      var g = c.getContext('2d');
+      if (whiteBack) { g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); }
+      g.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      c.toBlob(function (png) { download('family-tree-' + stamp() + '.png', png); }, 'image/png');
+      done(c, b);
     };
-    img.onerror = function () {
-      URL.revokeObjectURL(url);
-      window.alert('Image nahi ban payi. Print / PDF try karo.');
-    };
+    img.onerror = function () { URL.revokeObjectURL(url); fail(); };
     img.src = url;
   }
 
-  function exportPrint() {
-    var b = FT.TreeView.build(store.data);
-    var oldStyle = document.getElementById('printPageStyle');
-    if (oldStyle) oldStyle.remove();
-    var wMm = (b.width * 25.4 / 96).toFixed(2);
-    var hMm = (b.height * 25.4 / 96).toFixed(2);
-    var st = document.createElement('style');
-    st.id = 'printPageStyle';
-    st.textContent = '@media print { @page { size: ' + wMm + 'mm ' + hMm + 'mm; margin: 0; } }';
-    document.head.appendChild(st);
-    printArea.innerHTML = b.svg;
-    document.body.classList.add('printing');
-    window.print();
+  function exportPNG() {
+    drawTreePicture(false, function (c) {
+      c.toBlob(function (png) { download('family-tree-' + stamp() + '.png', png); }, 'image/png');
+    }, function () { window.alert('Image nahi ban payi.'); });
   }
-  window.addEventListener('afterprint', function () {
-    document.body.classList.remove('printing');
-    printArea.innerHTML = '';
-    var st = document.getElementById('printPageStyle');
-    if (st) st.remove();
-  });
+
+  /** PDF: one page, same shape as the tree picture (nothing squeezed, nothing cut). */
+  function exportPDF() {
+    drawTreePicture(true, function (c) {
+      c.toBlob(function (jpg) {
+        if (!jpg) { window.alert('PDF nahi ban payi.'); return; }
+        var rd = new FileReader();
+        rd.onload = function () {
+          var pdf = FT.pdf.fromJpeg(new Uint8Array(rd.result), c.width, c.height);
+          download('family-tree-' + stamp() + '.pdf', new Blob([pdf.bytes], { type: 'application/pdf' }));
+        };
+        rd.readAsArrayBuffer(jpg);
+      }, 'image/jpeg', 0.92);
+    }, function () { window.alert('PDF nahi ban payi.'); });
+  }
 
   var exportMenu = $('#exportMenu');
   $('#btnExport').addEventListener('click', function (e) {
@@ -634,7 +634,7 @@
     if (kind === 'json') exportJSON();
     else if (kind === 'csv') { download('family-tree-' + stamp() + '.csv', io.toCSV(store.data), 'text/csv;charset=utf-8'); store.markExported(); }
     else if (kind === 'png') exportPNG();
-    else if (kind === 'print') exportPrint();
+    else if (kind === 'pdf') exportPDF();
   });
 
   function chooseFile() { fileInput.click(); }

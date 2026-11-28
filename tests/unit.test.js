@@ -6,6 +6,7 @@ const io = require('../js/io.js');
 const layout = require('../js/layout.js');
 const translit = require('../js/translit.js');
 const { Store } = require('../js/store.js');
+const pdfLib = require('../js/pdf.js');
 
 function memStorage() {
   const m = {};
@@ -340,4 +341,30 @@ test('translit: offline fallback gives sensible Gujarati', () => {
   assert.equal(translit.offline('raj'), 'રજ');
   assert.equal(translit.offline('raaj'), 'રાજ');
   assert.equal(translit.offline('Dipak'), 'દિપક');
+});
+
+/* ---------- pdf ---------- */
+test('pdf: one page, same shape as the picture, valid xref', () => {
+  const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
+  for (const [w, h] of [[4000, 2500], [1000, 3000], [300, 300]]) {
+    const r = pdfLib.fromJpeg(jpg, w, h);
+    const txt = Buffer.from(r.bytes).toString('latin1');
+    assert.ok(txt.startsWith('%PDF-1.4'));
+    assert.equal((txt.match(/\/Type \/Page /g) || []).length, 1, 'exactly one page');
+    assert.ok(Math.abs(r.pageW / r.pageH - w / h) < 1e-6, 'page keeps the picture ratio');
+    const mb = txt.match(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/);
+    assert.ok(Math.abs(mb[1] / mb[2] - w / h) < 0.002);
+    // every xref offset points at "N 0 obj"
+    const xr = txt.indexOf('xref\n');
+    assert.equal(+txt.match(/startxref\n(\d+)/)[1], xr);
+    const rows = txt.slice(xr).split('\n').slice(3, 8);
+    rows.forEach((row, i) => assert.ok(txt.startsWith((i + 1) + ' 0 obj', +row.slice(0, 10))));
+    assert.ok(txt.includes('/Filter /DCTDecode /Length ' + jpg.length));
+  }
+});
+
+test('pdf: very big picture is kept inside the 200 inch PDF limit', () => {
+  const r = pdfLib.fromJpeg(new Uint8Array([1, 2]), 40000, 20000);
+  assert.ok(Math.max(r.pageW, r.pageH) <= 14400 + 1e-6);
+  assert.ok(Math.abs(r.pageW / r.pageH - 2) < 1e-6);
 });

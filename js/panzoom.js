@@ -1,5 +1,5 @@
 /*
- * Pan (drag) and zoom (mouse wheel / pinch) for the big canvas.
+ * Pan (drag) and zoom (mouse wheel, two-finger pinch) for the big canvas.
  */
 (function (root, factory) {
   var api = factory();
@@ -42,16 +42,56 @@
     var self = this;
     var stage = this.stage;
 
+    // every finger that is touching the stage: id -> {x, y}
+    var pts = {};
+    var pinch = null;
+    function count() { return Object.keys(pts).length; }
+    function two() {
+      var ids = Object.keys(pts);
+      var a = pts[ids[0]], b = pts[ids[1]];
+      return { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) };
+    }
+    function startDrag(id) {
+      var p = pts[id];
+      self.drag = { sx: p.x, sy: p.y, ox: self.s.x, oy: self.s.y, moved: false, id: id };
+    }
+
     stage.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      if (self.ignore && e.target.closest && e.target.closest(self.ignore)) return;
+      // a finger that lands on a name box starts nothing, but a second finger may always join a pinch
+      if (!count() && self.ignore && e.target.closest && e.target.closest(self.ignore)) return;
       self._cancelAnim();
-      self.drag = { sx: e.clientX, sy: e.clientY, ox: self.s.x, oy: self.s.y, moved: false, id: e.pointerId };
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
       try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      stage.classList.add('panning');
+      if (count() === 1) {
+        startDrag(e.pointerId);
+        stage.classList.add('panning');
+      } else if (count() === 2) {
+        // second finger: stop dragging, start pinching
+        self.drag = null;
+        var t = two();
+        var rect = stage.getBoundingClientRect();
+        pinch = { d0: t.d, k0: self.s.k, wx: (t.cx - rect.left - self.s.x) / self.s.k, wy: (t.cy - rect.top - self.s.y) / self.s.k };
+        stage.classList.add('panning');
+      }
     });
 
     stage.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return;
+      pts[e.pointerId].x = e.clientX;
+      pts[e.pointerId].y = e.clientY;
+      if (pinch && count() >= 2) {
+        // keep the point between the fingers under the fingers: zoom by finger distance, pan by finger centre
+        var t = two();
+        var rect = stage.getBoundingClientRect();
+        var k = clamp(pinch.k0 * t.d / pinch.d0, self.minK, self.maxK);
+        self.s.k = k;
+        self.s.x = t.cx - rect.left - pinch.wx * k;
+        self.s.y = t.cy - rect.top - pinch.wy * k;
+        pinch.moved = true;
+        self._apply();
+        return;
+      }
       var d = self.drag;
       if (!d || d.id !== e.pointerId) return;
       var dx = e.clientX - d.sx, dy = e.clientY - d.sy;
@@ -62,12 +102,21 @@
     });
 
     function end(e) {
-      var d = self.drag;
-      if (!d || d.id !== e.pointerId) return;
-      self.drag = null;
-      stage.classList.remove('panning');
+      if (!pts[e.pointerId]) return;
+      delete pts[e.pointerId];
       try { stage.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      if (d.moved) {
+      var moved = (self.drag && self.drag.moved) || (pinch && pinch.moved);
+      if (pinch) {
+        pinch = null;
+        self.drag = null;
+        var left = Object.keys(pts);
+        if (left.length === 1) startDrag(left[0]);   // one finger stays: carry on as a normal drag
+        if (left.length === 1) self.drag.moved = true;
+      } else {
+        self.drag = null;
+      }
+      if (!count()) stage.classList.remove('panning');
+      if (moved) {
         self.justDragged = true;
         setTimeout(function () { self.justDragged = false; }, 0);
       }

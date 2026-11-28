@@ -178,12 +178,33 @@ async function settle(page) { await page.waitForTimeout(600); }
   await settle(page);
   ok('wheel zoom, drag pan, fit button');
 
+  // two-finger pinch zoom (touch pointer events, like a phone)
+  const pinch = await page.evaluate(() => {
+    const st = document.getElementById('stage');
+    const r = st.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const ev = (type, id, x, y) => st.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 11, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+    const k0 = window.FTApp.pz.getState().k;
+    ev('pointerdown', 11, cx - 50, cy); ev('pointerdown', 12, cx + 50, cy);
+    ev('pointermove', 11, cx - 100, cy); ev('pointermove', 12, cx + 100, cy);   // fingers move apart -> zoom in
+    const k1 = window.FTApp.pz.getState().k;
+    ev('pointermove', 11, cx - 25, cy); ev('pointermove', 12, cx + 25, cy);     // fingers come together -> zoom out
+    const k2 = window.FTApp.pz.getState().k;
+    ev('pointerup', 11, cx - 25, cy); ev('pointerup', 12, cx + 25, cy);
+    return { k0, k1, k2 };
+  });
+  assert.ok(Math.abs(pinch.k1 / pinch.k0 - 2) < 0.05, 'fingers apart x2 -> zoom x2: ' + JSON.stringify(pinch));
+  assert.ok(pinch.k2 < pinch.k1 / 3, 'fingers together -> zoom out');
+  ok('pinch zoom with two fingers');
+  await page.click('#zFit');
+  await settle(page);
+
   // ---- tree (ped) view
   await page.click('#tabTree');
   await settle(page);
   assert.equal(await page.isVisible('#treeLayer svg'), true);
   const tagCount = await page.evaluate(() => document.querySelectorAll('#treeLayer svg text').length);
-  assert.equal(tagCount, 17 + 1); // 17 people + title
+  assert.equal(tagCount, 17 + 2); // 17 people + title (drawn twice: soft highlight + text)
   await page.screenshot({ path: path.join(OUT, '3-tree-sample.png') });
   ok('tree (ped) view draws all names + title');
   await page.click('#tabCanvas');
@@ -203,6 +224,17 @@ async function settle(page) { await page.waitForTimeout(600); }
   assert.equal(png.slice(1, 4).toString(), 'PNG');
   assert.ok(png.length > 5000);
   ok('JSON, CSV and PNG downloads work');
+
+  // PDF: one page, shape of the tree picture, a real JPEG inside
+  const pdfFile = await exportAs('pdf');
+  const pdfTxt = fs.readFileSync(pdfFile).toString('latin1');
+  assert.ok(pdfTxt.startsWith('%PDF-'));
+  assert.equal((pdfTxt.match(/\/Type \/Page /g) || []).length, 1);
+  const mbx = pdfTxt.match(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/);
+  const im = pdfTxt.match(/\/Width (\d+) \/Height (\d+)/);
+  assert.ok(Math.abs(mbx[1] / mbx[2] - im[1] / im[2]) < 0.01, 'page ratio = picture ratio');
+  assert.ok(pdfTxt.includes('/DCTDecode'));
+  ok('PDF export: single page with the tree picture shape');
 
   const exported = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
   assert.equal(exported.people.length, 17);

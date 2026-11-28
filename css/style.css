@@ -143,6 +143,39 @@ body {
   background-size: 24px 24px;
 }
 .stage[data-view="tree"] { background: #dcecee; }
+.canvas-title-wrap {
+  position: absolute; left: 16px; top: 14px; z-index: 15;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.canvas-title-box {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, .95);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .08);
+  transition: border-color .15s, box-shadow .15s;
+}
+.canvas-title-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, .14);
+}
+.canvas-title-icon { color: var(--muted); flex-shrink: 0; }
+#treeTitleInput {
+  border: 0; outline: none; background: transparent;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink);
+  width: 240px; max-width: 52vw;
+}
+#treeTitleInput::placeholder { color: var(--muted); font-weight: 400; }
+.title-sug-box {
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .14);
+  padding: 6px; min-width: 260px; max-width: 82vw;
+}
+.title-sug-box .sug-list { margin: 0; }
+.title-sug-box .sug-list li { font-size: 17px; padding: 6px 10px; }
+.title-sug-box .hint { margin: 4px 6px 2px; font-size: 11px; }
+.stage[data-view="tree"] .canvas-title-wrap { display: none; }
 .stage.panning { cursor: grabbing; }
 .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .layer { position: absolute; left: 0; top: 0; }

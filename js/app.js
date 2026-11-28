@@ -16,13 +16,13 @@
   var stage = $('#stage'), world = $('#world');
   var canvasLayer = $('#canvasLayer'), treeLayer = $('#treeLayer');
   var actionbar = $('#actionbar'), emptyEl = $('#empty');
-  var titleEl = $('#title'), dirtyEl = $('#dirty');
+  var titleEl = $('#title'), treeTitleInput = $('#treeTitleInput'), dirtyEl = $('#dirty');
   var fileInput = $('#fileInput'), printArea = $('#printArea');
 
   var store = new FT.Store();
   store.load();
 
-  var pz = new FT.PanZoom(stage, world, { ignore: '.node, .actionbar, .empty-card, .zoombar, .historybar' });
+  var pz = new FT.PanZoom(stage, world, { ignore: '.node, .actionbar, .empty-card, .zoombar, .historybar, .canvas-title-wrap' });
   var canvas = new FT.CanvasView(canvasLayer);
 
   var view = 'canvas';
@@ -42,6 +42,9 @@
     var people = store.data.people;
     emptyEl.classList.toggle('hidden', people.length > 0);
     if (titleEl) titleEl.textContent = store.data.title;
+    if (treeTitleInput && document.activeElement !== treeTitleInput) {
+      treeTitleInput.value = store.data.title || '';
+    }
     document.title = 'Vanshaa Vali';
     if (view === 'canvas') canvas.render(people, selectedId, animate);
     else renderTree();
@@ -134,7 +137,7 @@
     if (n) openEdit(n.getAttribute('data-id'));
   });
   stage.addEventListener('click', function (e) {
-    if (e.target.closest('.node, .actionbar, .zoombar, .historybar, .empty-card')) return;
+    if (e.target.closest('.node, .actionbar, .zoombar, .historybar, .empty-card, .canvas-title-wrap')) return;
     if (pz.justDragged) return;
     if (view === 'canvas') select(null);
   });
@@ -143,7 +146,8 @@
     var b = e.target.closest('button');
     if (!b || !selectedId) return;
     var act = b.getAttribute('data-act');
-    if (act === 'child') openChild(selectedId);
+    if (act === 'parent') openParent(selectedId);
+    else if (act === 'child') openChild(selectedId);
     else if (act === 'sibling') openSibling(selectedId);
     else if (act === 'wife') openWife(selectedId);
     else if (act === 'edit') openEdit(selectedId);
@@ -152,6 +156,7 @@
 
   /* ================= actions ================= */
 
+  function openParent(id) { openModal('parent', id, ''); }
   function openChild(id) { openModal('child', id, ''); }
   function openSibling(id) { openModal('sibling', id, ''); }
   function openWife(id) { var p = store.get(id); if (p) openModal('wife', id, p.wife || ''); }
@@ -173,7 +178,153 @@
   $('#btnFirst').addEventListener('click', function () { openModal('root', null, ''); });
   $('#btnUndo').addEventListener('click', function () { store.undo(); });
   $('#btnRedo').addEventListener('click', function () { store.redo(); });
+  /* ================= reusable Gujlish -> Gujarati suggestion helper ================= */
+
+  function attachGujaratiSug(inputEl, listEl, hintEl, opts) {
+    opts = opts || {};
+    var st = { items: [], hi: 0, reqId: 0, pending: null, source: '' };
+
+    function renderSug() {
+      listEl.innerHTML = st.items.map(function (s, i) {
+        return '<li class="' + (i === st.hi ? 'hi' : '') + '" data-i="' + i + '"><span class="num">' + (i + 1) + '</span><span class="gu">' + esc(s) + '</span></li>';
+      }).join('');
+      var hint = '';
+      if (st.items.length) {
+        if (st.source === 'pending') hint = 'Suggestions aa rahe hain...';
+        else if (st.source === 'offline') hint = 'Offline suggestion (basic). Internet ho to behtar milenge.';
+        else hint = 'Google suggestions';
+      }
+      if (hintEl) hintEl.textContent = hint;
+      if (opts.onRender) opts.onRender(st.items.length > 0);
+    }
+
+    function clearSug() {
+      st.items = []; st.hi = 0; st.reqId++; st.pending = null; st.source = '';
+      renderSug();
+    }
+
+    function acceptSug(i) {
+      var item = st.items[i];
+      if (!item) return false;
+      var sp = translit.splitTail(inputEl.value);
+      inputEl.value = sp.head + item;
+      clearSug();
+      inputEl.focus();
+      if (opts.onAccept) opts.onAccept(inputEl.value);
+      return true;
+    }
+
+    function acceptReady(then) {
+      var wait = st.pending || Promise.resolve();
+      wait.then(function () {
+        if (translit.splitTail(inputEl.value).tail && st.items.length) acceptSug(st.hi);
+        if (then) then();
+      });
+    }
+
+    inputEl.addEventListener('input', function () {
+      var sp = translit.splitTail(inputEl.value);
+      if (!sp.tail) { clearSug(); return; }
+      var tail = sp.tail;
+      st.items = [translit.offline(tail)];
+      st.hi = 0;
+      st.source = 'pending';
+      renderSug();
+      var id = ++st.reqId;
+      st.pending = new Promise(function (res) { setTimeout(res, 120); })
+        .then(function () { return id === st.reqId ? translit.suggest(tail) : null; })
+        .then(function (r) {
+          if (!r || id !== st.reqId) return;
+          st.items = r.items;
+          st.source = r.source;
+          st.hi = 0;
+          renderSug();
+        });
+    });
+
+    inputEl.addEventListener('keydown', function (e) {
+      var hasTail = !!translit.splitTail(inputEl.value).tail;
+      if (e.key === 'Tab' && hasTail && st.items.length) {
+        e.preventDefault(); acceptSug(st.hi); return;
+      }
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && st.items.length) {
+        e.preventDefault();
+        st.hi = (st.hi + (e.key === 'ArrowDown' ? 1 : st.items.length - 1)) % st.items.length;
+        renderSug();
+        return;
+      }
+      if (/^[1-9]$/.test(e.key) && hasTail && st.items.length >= parseInt(e.key, 10) && st.source !== 'pending') {
+        e.preventDefault();
+        acceptSug(parseInt(e.key, 10) - 1);
+      }
+    });
+
+    listEl.addEventListener('mousedown', function (e) {
+      var li = e.target.closest('li');
+      if (!li) return;
+      e.preventDefault();
+      acceptSug(parseInt(li.getAttribute('data-i'), 10));
+    });
+
+    return { clear: clearSug, acceptReady: acceptReady, hasItems: function () { return st.items.length > 0; } };
+  }
+
   if (titleEl) titleEl.addEventListener('dblclick', function () { openModal('title', null, store.data.title); });
+  if (treeTitleInput) {
+    var titleBeforeEdit = '';
+    var titleSugBox = $('#titleSugBox');
+    var titleSug = attachGujaratiSug(treeTitleInput, $('#titleSugList'), $('#titleSugHint'), {
+      onRender: function (has) { if (titleSugBox) titleSugBox.classList.toggle('hidden', !has); },
+      onAccept: function (val) {
+        store.data.title = val;
+        store._persist();
+        store.dirtySinceExport = true;
+        updateToolbar();
+      }
+    });
+    function commitTitleInput() {
+      var next = treeTitleInput.value.trim() || io.DEFAULT_TITLE;
+      if (next !== titleBeforeEdit) {
+        store.data.title = titleBeforeEdit;
+        store.setTitle(next);
+        titleBeforeEdit = store.data.title;
+      } else {
+        treeTitleInput.value = store.data.title;
+      }
+    }
+    treeTitleInput.addEventListener('focus', function () {
+      titleBeforeEdit = store.data.title || '';
+      if (treeTitleInput.value === io.DEFAULT_TITLE) treeTitleInput.select();
+    });
+    treeTitleInput.addEventListener('input', function () {
+      store.data.title = treeTitleInput.value;
+      store._persist();
+      store.dirtySinceExport = true;
+      updateToolbar();
+    });
+    treeTitleInput.addEventListener('blur', function () {
+      if (titleSug.hasItems()) {
+        titleSug.acceptReady(commitTitleInput);
+      } else {
+        titleSug.clear();
+        commitTitleInput();
+      }
+    });
+    treeTitleInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (translit.splitTail(treeTitleInput.value).tail) titleSug.acceptReady(null);
+        else treeTitleInput.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (titleSug.hasItems()) { titleSug.clear(); return; }
+        treeTitleInput.value = titleBeforeEdit;
+        store.data.title = titleBeforeEdit;
+        store._persist();
+        treeTitleInput.blur();
+      }
+    });
+  }
 
   $('#btnSample').addEventListener('click', function () {
     var res = io.normalize(FT.sample.people, FT.sample.title);
@@ -190,6 +341,7 @@
     var name = t ? t.name : '';
     switch (m.mode) {
       case 'root': return ['Naya vyakti', 'Alag shuruaat (root) ke roop me add hoga'];
+      case 'parent': return ['Parent ka naam', name + ' ke upar (parent) ke roop me add hoga'];
       case 'child': return ['Bache ka naam', name + ' ka bacha'];
       case 'sibling': return [t && t.parent ? 'Bhai / behen ka naam' : 'Naye root ka naam', t && t.parent ? name + ' ke saath, same parent ke neeche' : 'Alag shuruaat (root) ke roop me add hoga'];
       case 'wife': return ['Wife ka naam', name + ' ki wife (khali chhodoge to hat jayegi)'];
@@ -281,14 +433,16 @@
     }
     var mode = m.mode, target = m.target, newId = null;
     if (mode === 'root') newId = store.addRoot(name);
+    else if (mode === 'parent') newId = store.addParent(target, name);
     else if (mode === 'child') newId = store.addChild(target, name);
     else if (mode === 'sibling') newId = store.addSibling(target, name);
     else if (mode === 'wife') store.setWife(target, name);
     else if (mode === 'edit') store.rename(target, name);
     else if (mode === 'title') store.setTitle(name);
 
-    if (more && newId && (mode === 'root' || mode === 'child' || mode === 'sibling')) {
+    if (more && newId && (mode === 'root' || mode === 'parent' || mode === 'child' || mode === 'sibling')) {
       if (mode === 'root' || mode === 'sibling') { m.mode = 'sibling'; m.target = newId; }
+      else if (mode === 'parent') { m.target = newId; }
       var tx = modalTexts();
       $('#modalTitle').textContent = tx[0];
       $('#modalContext').textContent = tx[1];
@@ -371,11 +525,18 @@
   }
 
   document.addEventListener('keydown', function (e) {
+    var mod = e.ctrlKey || e.metaKey;
+    if (mod && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      if (!modal.classList.contains('hidden')) { finish(false); return; }
+      if (treeTitleInput && document.activeElement === treeTitleInput) treeTitleInput.blur();
+      if (needPeople()) exportJSON();
+      return;
+    }
     if (!modal.classList.contains('hidden')) return;
     var tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-    var mod = e.ctrlKey || e.metaKey;
     if (mod && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) store.redo(); else store.undo(); return; }
     if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); store.redo(); return; }
     if (mod || e.altKey || view !== 'canvas') return;
@@ -408,6 +569,12 @@
     if (store.data.people.length) return true;
     window.alert('Pehle koi vyakti add karo.');
     return false;
+  }
+
+  function exportJSON() {
+    store._persist();
+    download('family-tree-' + stamp() + '.json', io.toJSON(store.data), 'application/json;charset=utf-8');
+    store.markExported();
   }
 
   function exportPNG() {
@@ -464,7 +631,7 @@
     exportMenu.classList.add('hidden');
     if (!needPeople()) return;
     var kind = b.getAttribute('data-exp');
-    if (kind === 'json') { download('family-tree-' + stamp() + '.json', io.toJSON(store.data), 'application/json;charset=utf-8'); store.markExported(); }
+    if (kind === 'json') exportJSON();
     else if (kind === 'csv') { download('family-tree-' + stamp() + '.csv', io.toCSV(store.data), 'text/csv;charset=utf-8'); store.markExported(); }
     else if (kind === 'png') exportPNG();
     else if (kind === 'print') exportPrint();

@@ -45,12 +45,27 @@
   </header>
 
   <main id="stage" class="stage" data-view="canvas">
+    <div class="canvas-title-wrap">
+      <div class="canvas-title-box">
+        <svg class="canvas-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+        <input id="treeTitleInput" type="text" placeholder="Gujlish me tree title..." aria-label="Tree Title" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div id="titleSugBox" class="title-sug-box hidden">
+        <ul id="titleSugList" class="sug-list"></ul>
+        <p id="titleSugHint" class="hint"></p>
+      </div>
+    </div>
+
     <div id="world" class="world">
       <div id="canvasLayer" class="layer"></div>
       <div id="treeLayer" class="layer hidden"></div>
     </div>
 
     <div id="actionbar" class="actionbar hidden">
+      <button data-act="parent">+ Parent</button>
       <button data-act="child">+ Child</button>
       <button data-act="sibling">+ Sibling</button>
       <button data-act="wife">+ Wife</button>

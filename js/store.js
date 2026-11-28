@@ -130,6 +130,20 @@
     return id;
   };
 
+  /** Inserts a new parent directly above `childId` (preserving any existing grandparent). */
+  Store.prototype.addParent = function (childId, name) {
+    var child = this.get(childId);
+    if (!child) return null;
+    this._pushUndo();
+    var newId = this._newId();
+    var idx = this.data.people.indexOf(child);
+    this.data.people.splice(idx, 0, { id: newId, name: String(name).trim(), parent: child.parent });
+    child.parent = newId;
+    this._mark();
+    this._emit({ type: 'add', id: newId });
+    return newId;
+  };
+
   /** New person with the same parent, placed right after `id` among siblings. */
   Store.prototype.addSibling = function (id, name) {
     var me = this.get(id);

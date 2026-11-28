@@ -126,11 +126,11 @@
     var F = FT.layout.computeFan(people, { measure: measure, nodeH: TAGH });
 
     var bb = has ? F.bbox : { minX: -260, maxX: 260, minY: 100, maxY: 420 };
-    var padX = 210, padTop = 330, padBot = 210;
+    var padX = 480, padTop = 520, padBot = 360;
     var half = Math.max(Math.abs(bb.minX), Math.abs(bb.maxX));
-    var W = Math.max(1300, Math.ceil(half * 2 + padX * 2));
+    var W = Math.max(2200, Math.ceil(half * 2 + padX * 2));
     var ox = W / 2;
-    var Yg = padTop + bb.maxY;      // ground line in picture coordinates
+    var Yg = Math.max(1050, padTop + bb.maxY);      // ground line in picture coordinates
     var H = Math.ceil(Yg + padBot);
     function SX(x) { return ox + x; }
     function SY(y) { return Yg - y; }
@@ -563,11 +563,57 @@
     });
     out.push(tags.join(''));
 
-    /* ---------- title ---------- */
-    var title = String(data.title || '');
-    var fs = Math.max(30, 64 - Math.max(0, Array.from(title).length - 14) * 1.6);
-    out.push('<text x="' + r1(W / 2) + '" y="110" text-anchor="middle" dominant-baseline="central" font-size="' + r1(fs) +
-      '" font-weight="800" fill="#3b2a1a">' + esc(title) + '</text>');
+    /* ---------- title (ornamental heritage banner) ---------- */
+    var title = String(data.title || '').trim();
+    if (title) {
+      var chars = Array.from(title).length;
+      var fs = Math.max(30, 56 - Math.max(0, chars - 16) * 1.4);
+      var cx = W / 2, cy = 118;
+      var bw = Math.max(460, Math.min(W - 260, chars * fs * 0.64 + 170));
+      var bh = Math.max(90, fs + 44);
+      var bx = cx - bw / 2, by = cy - bh / 2;
+      var tailW = 58, tailDrop = 16;
+
+      out.push('<defs>' +
+        '<linearGradient id="ft-banner-bg" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="#fffaf0"/><stop offset="0.5" stop-color="#f7e7c4"/><stop offset="1" stop-color="#e8cc93"/></linearGradient>' +
+        '<linearGradient id="ft-banner-tail" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0" stop-color="#c9a565"/><stop offset="1" stop-color="#e5c88c"/></linearGradient>' +
+        '</defs>');
+
+      var banner = [];
+      // left & right ribbon tails
+      banner.push('<path d="M' + r1(bx + 14) + ' ' + r1(by + tailDrop) +
+        'H' + r1(bx - tailW) + 'L' + r1(bx - tailW + 22) + ' ' + r1(cy + tailDrop / 2) +
+        'L' + r1(bx - tailW) + ' ' + r1(by + bh + tailDrop) + 'H' + r1(bx + 14) + 'Z" fill="url(#ft-banner-tail)" stroke="#6b4a28" stroke-width="2.4" stroke-linejoin="round"/>');
+      banner.push('<path d="M' + r1(bx + bw - 14) + ' ' + r1(by + tailDrop) +
+        'H' + r1(bx + bw + tailW) + 'L' + r1(bx + bw + tailW - 22) + ' ' + r1(cy + tailDrop / 2) +
+        'L' + r1(bx + bw + tailW) + ' ' + r1(by + bh + tailDrop) + 'H' + r1(bx + bw - 14) + 'Z" fill="url(#ft-banner-tail)" stroke="#6b4a28" stroke-width="2.4" stroke-linejoin="round"/>');
+      // fold shadows under main plaque
+      banner.push('<path d="M' + r1(bx) + ' ' + r1(by + bh) + 'L' + r1(bx + 18) + ' ' + r1(by + bh + tailDrop) + 'V' + r1(by + bh) + 'Z" fill="#7a5329"/>');
+      banner.push('<path d="M' + r1(bx + bw) + ' ' + r1(by + bh) + 'L' + r1(bx + bw - 18) + ' ' + r1(by + bh + tailDrop) + 'V' + r1(by + bh) + 'Z" fill="#7a5329"/>');
+
+      // main plaque shadow + body + inner gold frame
+      banner.push('<rect x="' + r1(bx + 3) + '" y="' + r1(by + 6) + '" width="' + r1(bw) + '" height="' + r1(bh) + '" rx="20" fill="#000" opacity="0.16"/>');
+      banner.push('<rect x="' + r1(bx) + '" y="' + r1(by) + '" width="' + r1(bw) + '" height="' + r1(bh) + '" rx="20" fill="url(#ft-banner-bg)" stroke="#5c3b1e" stroke-width="3.2"/>');
+      banner.push('<rect x="' + r1(bx + 9) + '" y="' + r1(by + 9) + '" width="' + r1(bw - 18) + '" height="' + r1(bh - 18) + '" rx="14" fill="none" stroke="#b58942" stroke-width="1.6" stroke-opacity="0.75"/>');
+
+      // decorative side diamonds & leaf flourishes
+      [-1, 1].forEach(function (sd) {
+        var dx = cx + sd * (bw / 2 - 34);
+        banner.push('<path d="M' + r1(dx) + ' ' + r1(cy - 8) + 'L' + r1(dx + 8) + ' ' + r1(cy) + 'L' + r1(dx) + ' ' + r1(cy + 8) + 'L' + r1(dx - 8) + ' ' + r1(cy) + 'Z" fill="#b58942"/>');
+        banner.push(leafUse(cx + sd * (bw / 2 + 8), cy - 10, sd < 0 ? 155 : 25, 1.05, '#5e9c43'));
+        banner.push(leafUse(cx + sd * (bw / 2 + 12), cy + 12, sd < 0 ? 205 : -25, 0.9, '#7ab852'));
+      });
+
+      // title text with subtle highlight
+      banner.push('<text x="' + r1(cx) + '" y="' + r1(cy + 2) + '" text-anchor="middle" dominant-baseline="central" font-size="' + r1(fs) +
+        '" font-weight="800" fill="#fff" opacity="0.55">' + esc(title) + '</text>');
+      banner.push('<text x="' + r1(cx) + '" y="' + r1(cy) + '" text-anchor="middle" dominant-baseline="central" font-size="' + r1(fs) +
+        '" font-weight="800" fill="#3a2310">' + esc(title) + '</text>');
+
+      out.push('<g>' + banner.join('') + '</g>');
+    }
 
     out.push('</svg>');
     return { svg: out.join(''), width: W, height: H };

@@ -227,7 +227,10 @@
     }
     // soft shadow under the crown
     var shadowRx = Math.min(half * 0.95, 900);
-    out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#2f5a25" opacity="' + (photo ? 0.28 : 0.2) + '"/>');
+    if (photo) {      // soft shadow: dark in the middle, fading to nothing (no hard edge)
+      out.push('<defs><radialGradient id="ft-gshadow"><stop offset="0" stop-color="#1d3a12" stop-opacity="0.42"/><stop offset="0.6" stop-color="#1d3a12" stop-opacity="0.18"/><stop offset="1" stop-color="#1d3a12" stop-opacity="0"/></radialGradient></defs>');
+      out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="40" fill="url(#ft-gshadow)"/>');
+    } else out.push('<ellipse cx="' + r1(ox) + '" cy="' + r1(Yg + 26) + '" rx="' + r1(shadowRx) + '" ry="34" fill="#2f5a25" opacity="0.2"/>');
 
     /* ---------- the tree ---------- */
     var P = {};
@@ -644,8 +647,26 @@
       scW = Math.min(scW, W - scLeft - 20);
       var scH = scW * AS.scene.h / AS.scene.w;
       var scBottom = Yg + 38;
-      out.push('<ellipse cx="' + r1(scLeft + scW * 0.5) + '" cy="' + r1(scBottom - scH * 0.03) + '" rx="' + r1(scW * 0.5) + '" ry="' + r1(scH * 0.06) + '" fill="#1d3a12" opacity="0.28"/>');
+      out.push('<ellipse cx="' + r1(scLeft + scW * 0.5) + '" cy="' + r1(scBottom - scH * 0.03) + '" rx="' + r1(scW * 0.55) + '" ry="' + r1(scH * 0.09) + '" fill="url(#ft-gshadow)"/>');
       out.push('<image x="' + r1(scLeft) + '" y="' + r1(scBottom - scH) + '" width="' + r1(scW) + '" height="' + r1(scH) + '" href="' + AS.scene.uri + '"/>');
+    }
+
+    /* ---------- tiny grass and tiny flowers round the trunk and the scene (hide the edge of the cut-out) ---------- */
+    if (photo) {
+      var gx0 = ox - trunkW * 1.5, gx1 = (AS.scene ? scLeft + scW : ox + trunkW * 1.5) + trunkW * 0.5;
+      var gcols = ['#4d7d36', '#5f9142', '#74a852', '#3f6d2d'], fcols = ['#fbfbf4', '#f3c6d4', '#f6e27a', '#e9a0bb'];
+      var gcount = Math.round((gx1 - gx0) / 5.5), blades = ['', '', '', ''], dots = '';
+      for (var gI = 0; gI < gcount; gI++) {
+        var gx = gx0 + scene() * (gx1 - gx0), gy = Yg + 12 + Math.pow(scene(), 0.8) * 40;
+        var gh = 6 + scene() * 9, gk = Math.floor(scene() * 4), lean = (scene() - 0.5) * 7;
+        blades[gk] += 'M' + r1(gx) + ' ' + r1(gy) + 'q' + r1(lean * 0.3) + ' ' + r1(-gh * 0.6) + ' ' + r1(lean) + ' ' + r1(-gh) +
+          'M' + r1(gx + 2) + ' ' + r1(gy) + 'q' + r1(-lean * 0.2) + ' ' + r1(-gh * 0.5) + ' ' + r1(-lean * 0.6 + 2) + ' ' + r1(-gh * 0.8);
+        if (scene() < 0.16) dots += '<circle cx="' + r1(gx + (scene() - 0.5) * 6) + '" cy="' + r1(gy - gh * (0.7 + scene() * 0.3)) + '" r="' + r1(1.6 + scene() * 1.7) + '" fill="' + fcols[Math.floor(scene() * 4)] + '"/>';
+      }
+      blades.forEach(function (b, bi) {
+        if (b) out.push('<path d="' + b + '" fill="none" stroke="' + gcols[bi] + '" stroke-width="1.7" stroke-linecap="round"/>');
+      });
+      out.push(dots);
     }
 
     /* ---------- name tags ---------- */

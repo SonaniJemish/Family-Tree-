@@ -604,19 +604,52 @@
     }, function () { window.alert('Image nahi ban payi.'); });
   }
 
-  /** PDF: one page, same shape as the tree picture (nothing squeezed, nothing cut). */
+  /**
+   * PDF: ONE page, same shape as the tree. The picture is drawn in strips (top to bottom) so it can be
+   * much sharper than one phone canvas allows; the strips are put together again inside the PDF.
+   */
   function exportPDF() {
-    drawTreePicture(true, function (c) {
-      c.toBlob(function (jpg) {
-        if (!jpg) { window.alert('PDF nahi ban payi.'); return; }
-        var rd = new FileReader();
-        rd.onload = function () {
-          var pdf = FT.pdf.fromJpeg(new Uint8Array(rd.result), c.width, c.height);
+    var b = FT.TreeView.build(store.data);
+    var blob = new Blob([b.svg], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    function fail() { window.alert('PDF nahi ban payi.'); }
+    img.onerror = function () { URL.revokeObjectURL(url); fail(); };
+    img.onload = function () {
+      // sharpness: up to 2x, at most 16000 px on the long side and about 100 million pixels in all
+      var scale = Math.min(2, 16000 / Math.max(b.width, b.height), Math.sqrt(100000000 / (b.width * b.height)));
+      var W = Math.max(1, Math.round(b.width * scale)), H = Math.max(1, Math.round(b.height * scale));
+      var rowsPerStrip = Math.max(256, Math.floor(12000000 / W));      // one strip canvas stays under ~12 million pixels
+      var strips = [], y0 = 0;
+      function next() {
+        if (y0 >= H) {
+          URL.revokeObjectURL(url);
+          var pdf = FT.pdf.fromStrips(strips, W, H);
           download('family-tree-' + stamp() + '.pdf', new Blob([pdf.bytes], { type: 'application/pdf' }));
-        };
-        rd.readAsArrayBuffer(jpg);
-      }, 'image/jpeg', 0.92);
-    }, function () { window.alert('PDF nahi ban payi.'); });
+          return;
+        }
+        var h = Math.min(rowsPerStrip + 1, H - y0);                    // +1 row overlap: no hair-line between strips
+        var c = document.createElement('canvas');
+        c.width = W; c.height = h;
+        var g = c.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, h);
+        var vy = H / b.height;
+        g.drawImage(img, 0, y0 / vy, b.width, h / vy, 0, 0, W, h);
+        c.toBlob(function (jpg) {
+          if (!jpg) { URL.revokeObjectURL(url); fail(); return; }
+          var rd = new FileReader();
+          rd.onload = function () {
+            strips.push({ jpeg: new Uint8Array(rd.result), w: W, h: h, y: y0 });
+            y0 += rowsPerStrip;
+            c.width = c.height = 1;                                     // free the memory before the next strip
+            next();
+          };
+          rd.readAsArrayBuffer(jpg);
+        }, 'image/jpeg', 0.92);
+      }
+      next();
+    };
+    img.src = url;
   }
 
   var exportMenu = $('#exportMenu');

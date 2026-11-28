@@ -368,3 +368,20 @@ test('pdf: very big picture is kept inside the 200 inch PDF limit', () => {
   assert.ok(Math.max(r.pageW, r.pageH) <= 14400 + 1e-6);
   assert.ok(Math.abs(r.pageW / r.pageH - 2) < 1e-6);
 });
+
+test('pdf: strips of one picture sit on ONE page, stacked top to bottom', () => {
+  const jpg = (n) => new Uint8Array(n).fill(7);
+  // picture 1000 x 2500 px cut in 3 strips (1 px overlap)
+  const strips = [{ jpeg: jpg(10), w: 1000, h: 1001, y: 0 }, { jpeg: jpg(20), w: 1000, h: 1001, y: 1000 }, { jpeg: jpg(30), w: 1000, h: 500, y: 2000 }];
+  const r = pdfLib.fromStrips(strips, 1000, 2500);
+  const txt = Buffer.from(r.bytes).toString('latin1');
+  assert.equal((txt.match(/\/Type \/Page /g) || []).length, 1);
+  assert.equal((txt.match(/\/Subtype \/Image/g) || []).length, 3);
+  assert.ok(Math.abs(r.pageW / r.pageH - 0.4) < 1e-6);
+  // first strip starts at the top, last one at the bottom (y = 0)
+  assert.ok(txt.includes(' 0 0 ' + (500 * 0.75) + ' 0 0 cm /Im2 Do'));
+  const xr = txt.indexOf('xref\n');
+  assert.equal(+txt.match(/startxref\n(\d+)/)[1], xr);
+  const rows = txt.slice(xr).split('\n').slice(3, 3 + 7);
+  rows.forEach((row, i) => assert.ok(txt.startsWith((i + 1) + ' 0 obj', +row.slice(0, 10))));
+});

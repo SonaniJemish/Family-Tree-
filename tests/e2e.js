@@ -231,8 +231,9 @@ async function settle(page) { await page.waitForTimeout(600); }
   assert.ok(pdfTxt.startsWith('%PDF-'));
   assert.equal((pdfTxt.match(/\/Type \/Page /g) || []).length, 1);
   const mbx = pdfTxt.match(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/);
-  const im = pdfTxt.match(/\/Width (\d+) \/Height (\d+)/);
-  assert.ok(Math.abs(mbx[1] / mbx[2] - im[1] / im[2]) < 0.01, 'page ratio = picture ratio');
+  const hs = [...pdfTxt.matchAll(/\/Width (\d+) \/Height (\d+)/g)].map((m) => [+m[1], +m[2]]);
+  const picW = hs[0][0], picH = hs.reduce((a, h) => a + h[1], 0) - (hs.length - 1);   // strips overlap by 1 row
+  assert.ok(Math.abs(mbx[1] / mbx[2] - picW / picH) < 0.01, 'page ratio = picture ratio');
   assert.ok(pdfTxt.includes('/DCTDecode'));
   ok('PDF export: single page with the tree picture shape');
 

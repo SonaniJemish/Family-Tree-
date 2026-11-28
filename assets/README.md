@@ -15,5 +15,5 @@ How to change the art
 The pictures are placed inside `js/assets.js` on purpose: when the tree is saved as PNG or PDF, the SVG is turned into an image, and an image made that way cannot load other files.
 
 Scene with Krishna and the cows
-- `photo/krishna-cows.jpg` is the picture (on a flat magenta background); `tools/make-photo-assets.py` cuts the magenta out.
+- `photo/krishna-cows.jpg` is the picture (anime / Ghibli-style painting on a flat magenta background); `tools/make-photo-assets.py` cuts the magenta out.
 - It is drawn to the right of the trunk, on the ground, in `js/tree-view.js` (look for "Krishna playing the flute").

@@ -640,7 +640,7 @@
     /* ---------- Krishna playing the flute, with cows, to the right of the trunk ---------- */
     if (photo && AS.scene) {
       var scW = Math.max(trunkW * 5.4, W * 0.17);
-      var scLeft = ox + trunkW * 0.95;
+      var scLeft = ox + trunkW * 0.46;       // Krishna leans his back on the right edge of the trunk
       scW = Math.min(scW, W - scLeft - 20);
       var scH = scW * AS.scene.h / AS.scene.w;
       var scBottom = Yg + 38;

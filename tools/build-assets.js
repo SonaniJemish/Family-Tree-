@@ -48,7 +48,7 @@ const assets = {
   leafLen: 190,                        // height of a leaf picture in pixels
   bark: bark.uri, barkSize: bark.w, barkScale: 0.42,
   foliage: foliage.uri, foliageSize: foliage.w, foliageScale: 0.9,
-  bg: { uri: bg.uri, w: bg.w, h: bg.h, meadowTop: 0.64, topColor: '#6dafed' },
+  bg: { uri: bg.uri, w: bg.w, h: bg.h, meadowTop: 0.64, topColor: '#3891df' },
   scene: { uri: kWebp, w: kSize.w, h: kSize.h }          // Krishna playing the flute, with cows (sits right of the trunk)
 };
 
